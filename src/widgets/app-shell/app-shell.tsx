@@ -9,7 +9,7 @@ import {
   ChevronRight,
 } from 'lucide-react';
 import { useAuthStore } from '@/shared/api/auth-store';
-import { api } from '@/shared/api/client';
+import { isSsoConfigured, msalInstance } from '@/app/auth/msal';
 import { cn } from '@/shared/lib/utils';
 
 interface NavGroup {
@@ -53,11 +53,17 @@ export function AppShell() {
 
   async function handleLogout() {
     try {
-      await api.POST('/v1/auth/logout', { credentials: 'include' } as never);
+      await fetch('/v1/auth/logout', { method: 'POST', credentials: 'include' });
     } catch {
-      // Best-effort — clear local state regardless
+      // best-effort
     }
     clear();
+    if (isSsoConfigured) {
+      // Sign out from Microsoft so the user isn't silently re-authenticated
+      await msalInstance.initialize();
+      await msalInstance.logoutRedirect({ postLogoutRedirectUri: window.location.origin });
+      return;
+    }
     navigate({ to: '/login' });
   }
 

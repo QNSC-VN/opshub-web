@@ -38,7 +38,7 @@ export interface AuthResponse {
 }
 
 export interface MeResponse {
-  id: string;
+  sub: string;
   email: string;
   name: string;
   roles: string[];
@@ -61,7 +61,7 @@ export interface paths {
     post: {
       requestBody: {
         content: {
-          'application/json': { email: string; name?: string; roles?: string[] };
+          'application/json': { email: string };
         };
       };
       responses: {

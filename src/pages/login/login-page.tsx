@@ -4,8 +4,6 @@ import { toast } from 'sonner';
 import { api } from '@/shared/api/client';
 import { useAuthStore } from '@/shared/api/auth-store';
 
-const ROLE_PRESETS = ['it-admin', 'security', 'hr', 'manager', 'employee'];
-
 function OpsHubMark({ size = 32 }: { size?: number }) {
   return (
     <svg width={size} height={size} viewBox="0 0 32 32" fill="none" aria-hidden="true">
@@ -19,21 +17,15 @@ function OpsHubMark({ size = 32 }: { size?: number }) {
 }
 
 /**
- * Dev-only login page — shown only when VITE_ENTRA_TENANT_ID / CLIENT_ID are
- * not set. In production the router's `beforeLoad` calls `triggerLogin()` and
+ * Dev-only login page — only reached when VITE_ENTRA_TENANT_ID / CLIENT_ID are
+ * not configured. In production the router's beforeLoad calls triggerLogin() and
  * redirects the user straight to Microsoft before this page ever renders.
  */
 export function LoginPage() {
   const navigate = useNavigate();
   const setToken = useAuthStore((s) => s.setToken);
   const [email, setEmail] = useState('admin@opshub.local');
-  const [roles, setRoles] = useState<string[]>(['it-admin']);
   const [loading, setLoading] = useState(false);
-
-  const toggleRole = (role: string) =>
-    setRoles((prev) =>
-      prev.includes(role) ? prev.filter((r) => r !== role) : [...prev, role],
-    );
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -99,7 +91,7 @@ export function LoginPage() {
           <div className="mb-7">
             <h2 className="text-lg font-semibold tracking-tight text-zinc-900">Dev sign in</h2>
             <p className="mt-1 text-sm text-zinc-500">
-              No password required. Uses seeded employees.
+              No password required. Uses seeded employees only.
             </p>
           </div>
 
@@ -114,30 +106,6 @@ export function LoginPage() {
                 className="h-9 w-full rounded-md border border-zinc-200 bg-white px-3 text-sm text-zinc-900 placeholder:text-zinc-400 transition-colors focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
                 placeholder="user@opshub.local"
               />
-            </div>
-
-            <div className="flex flex-col gap-1.5">
-              <label className="text-xs font-medium text-zinc-700">Roles (informational)</label>
-              <div className="flex flex-wrap gap-1.5">
-                {ROLE_PRESETS.map((role) => (
-                  <button
-                    key={role}
-                    type="button"
-                    onClick={() => toggleRole(role)}
-                    className={[
-                      'rounded-md border px-2.5 py-1 text-xs font-medium transition-colors',
-                      roles.includes(role)
-                        ? 'border-blue-600 bg-blue-600 text-white'
-                        : 'border-zinc-200 bg-white text-zinc-600 hover:border-zinc-300 hover:bg-zinc-50',
-                    ].join(' ')}
-                  >
-                    {role}
-                  </button>
-                ))}
-              </div>
-              <p className="text-[11px] text-zinc-400">
-                Actual roles come from the DB. This selector is informational only.
-              </p>
             </div>
 
             <button
