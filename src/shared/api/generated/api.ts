@@ -46,6 +46,18 @@ export interface MeResponse {
 }
 
 export interface paths {
+  '/v1/auth/entra-login': {
+    post: {
+      requestBody: {
+        content: {
+          'application/json': { idToken: string };
+        };
+      };
+      responses: {
+        200: { content: { 'application/json': AuthResponse } };
+      };
+    };
+  };
   '/v1/auth/dev-login': {
     post: {
       requestBody: {
