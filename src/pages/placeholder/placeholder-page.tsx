@@ -1,24 +1,39 @@
-import { Card, CardContent, CardHeader, CardTitle } from '@/shared/ui/card';
+import { Link } from "@tanstack/react-router";
+import { ArrowRight, Construction } from "lucide-react";
 
-/** Placeholder page — wire to the corresponding API module next. */
-export function PlaceholderPage({ title, description }: { title: string; description: string }) {
+interface PlaceholderPageProps {
+  title: string;
+  description: string;
+}
+
+export function PlaceholderPage({ title, description }: PlaceholderPageProps) {
   return (
-    <div className="flex flex-col gap-6">
+    <div className="flex flex-col gap-5">
       <div>
-        <h1 className="text-xl font-semibold tracking-tight">{title}</h1>
-        <p className="text-sm text-neutral-500">{description}</p>
+        <h1 className="text-lg font-semibold tracking-tight text-zinc-900">{title}</h1>
+        <p className="mt-0.5 text-sm text-zinc-500">{description}</p>
       </div>
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-neutral-500">Coming soon</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <p className="text-sm text-neutral-400">
-            This view is scaffolded. Connect it to the API module using the typed client in{' '}
-            <code className="rounded bg-neutral-100 px-1 py-0.5 text-xs">shared/api/client</code>.
-          </p>
-        </CardContent>
-      </Card>
+
+      <div className="flex flex-col items-center justify-center rounded-lg border border-zinc-200 border-dashed bg-white px-6 py-16 text-center">
+        <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-zinc-100">
+          <Construction className="h-5 w-5 text-zinc-400" strokeWidth={1.75} />
+        </div>
+        <h2 className="text-sm font-medium text-zinc-700">Coming soon</h2>
+        <p className="mt-1.5 max-w-sm text-sm text-zinc-400">
+          This module is scaffolded and ready for implementation. Connect it to the API using{" "}
+          <code className="rounded bg-zinc-100 px-1.5 py-0.5 text-xs font-mono text-zinc-600">
+            shared/api/client
+          </code>
+          .
+        </p>
+        <Link
+          to="/"
+          className="mt-6 flex items-center gap-1.5 text-xs font-medium text-blue-600 hover:text-blue-700"
+        >
+          Back to overview
+          <ArrowRight className="h-3.5 w-3.5" strokeWidth={1.75} />
+        </Link>
+      </div>
     </div>
   );
 }

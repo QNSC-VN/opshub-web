@@ -1,16 +1,50 @@
 import { Link, Outlet, useNavigate } from '@tanstack/react-router';
-import { LayoutDashboard, Laptop, ShieldCheck, ScanLine, CalendarClock, LogOut } from 'lucide-react';
+import {
+  LayoutDashboard,
+  Laptop,
+  ShieldCheck,
+  ScanLine,
+  CalendarClock,
+  LogOut,
+  ChevronRight,
+} from 'lucide-react';
 import { useAuthStore } from '@/shared/api/auth-store';
-import { Button } from '@/shared/ui/button';
 import { cn } from '@/shared/lib/utils';
 
-const nav = [
-  { to: '/', label: 'Dashboard', icon: LayoutDashboard },
-  { to: '/assets', label: 'Assets', icon: Laptop },
-  { to: '/access', label: 'Access Requests', icon: ShieldCheck },
-  { to: '/compliance', label: 'Compliance', icon: ScanLine },
-  { to: '/workforce', label: 'Workforce', icon: CalendarClock },
-] as const;
+interface NavGroup {
+  label?: string;
+  items: Array<{ to: string; label: string; icon: React.ComponentType<{ className?: string; strokeWidth?: number }> }>;
+}
+
+const navGroups: NavGroup[] = [
+  {
+    items: [{ to: '/', label: 'Overview', icon: LayoutDashboard }],
+  },
+  {
+    label: 'IT Operations',
+    items: [
+      { to: '/assets', label: 'Assets', icon: Laptop },
+      { to: '/access', label: 'Access Requests', icon: ShieldCheck },
+      { to: '/compliance', label: 'Compliance', icon: ScanLine },
+    ],
+  },
+  {
+    label: 'Workforce',
+    items: [{ to: '/workforce', label: 'Workforce', icon: CalendarClock }],
+  },
+];
+
+function OpsHubMark() {
+  return (
+    <svg width="22" height="22" viewBox="0 0 22 22" fill="none" aria-hidden="true">
+      <rect width="22" height="22" rx="5" fill="#2563eb" />
+      <path
+        d="M11 5.5C7.96 5.5 5.5 7.96 5.5 11s2.46 5.5 5.5 5.5 5.5-2.46 5.5-5.5S14.04 5.5 11 5.5Zm0 8.25a2.75 2.75 0 1 1 0-5.5 2.75 2.75 0 0 1 0 5.5Z"
+        fill="white"
+      />
+    </svg>
+  );
+}
 
 export function AppShell() {
   const navigate = useNavigate();
@@ -18,45 +52,81 @@ export function AppShell() {
 
   return (
     <div className="flex h-full">
-      <aside className="flex w-60 shrink-0 flex-col border-r border-neutral-200 bg-neutral-50">
-        <div className="flex h-14 items-center px-5 text-base font-semibold tracking-tight">
-          OpsHub
+      {/* Sidebar */}
+      <aside
+        className="flex w-56 shrink-0 flex-col"
+        style={{ background: 'var(--bg-sidebar)' }}
+      >
+        {/* Logo */}
+        <div className="flex h-14 items-center gap-2.5 px-4 shrink-0">
+          <OpsHubMark />
+          <span className="text-sm font-semibold tracking-tight text-white">OpsHub</span>
         </div>
-        <nav className="flex flex-1 flex-col gap-0.5 px-3 py-2">
-          {nav.map(({ to, label, icon: Icon }) => (
-            <Link
-              key={to}
-              to={to}
-              className={cn(
-                'flex items-center gap-3 rounded-md px-3 py-2 text-sm text-neutral-600 hover:bg-neutral-200/60',
+
+        {/* Divider */}
+        <div className="mx-4 h-px bg-zinc-800" />
+
+        {/* Nav */}
+        <nav className="flex flex-1 flex-col gap-5 overflow-y-auto px-2 py-3">
+          {navGroups.map((group, gi) => (
+            <div key={gi} className="flex flex-col gap-0.5">
+              {group.label && (
+                <span className="px-2 pb-1 text-[10px] font-medium uppercase tracking-widest text-zinc-600">
+                  {group.label}
+                </span>
               )}
-              activeProps={{ className: 'bg-neutral-200 font-medium text-neutral-900' }}
-              activeOptions={{ exact: to === '/' }}
-            >
-              <Icon className="h-4 w-4" />
-              {label}
-            </Link>
+              {group.items.map(({ to, label, icon: Icon }) => (
+                <Link
+                  key={to}
+                  to={to}
+                  activeOptions={{ exact: to === '/' }}
+                  className={cn(
+                    'group flex items-center gap-2.5 rounded-md px-2 py-1.5 text-sm transition-colors',
+                    'text-zinc-400 hover:bg-zinc-800 hover:text-zinc-100',
+                  )}
+                  activeProps={{
+                    className:
+                      'group flex items-center gap-2.5 rounded-md px-2 py-1.5 text-sm bg-zinc-800 text-white',
+                  }}
+                >
+                  <Icon className="h-4 w-4 shrink-0" strokeWidth={1.75} />
+                  <span className="flex-1">{label}</span>
+                  <ChevronRight
+                    className="h-3 w-3 shrink-0 opacity-0 transition-opacity group-hover:opacity-40"
+                    strokeWidth={2}
+                  />
+                </Link>
+              ))}
+            </div>
           ))}
         </nav>
-        <div className="p-3">
-          <Button
-            variant="ghost"
-            className="w-full justify-start text-neutral-600"
+
+        {/* Bottom: sign out */}
+        <div className="mx-4 h-px bg-zinc-800" />
+        <div className="p-2">
+          <button
             onClick={() => {
               clear();
               navigate({ to: '/login' });
             }}
+            className="flex w-full items-center gap-2.5 rounded-md px-2 py-1.5 text-sm text-zinc-500 transition-colors hover:bg-zinc-800 hover:text-zinc-200"
           >
-            <LogOut className="h-4 w-4" />
+            <LogOut className="h-4 w-4 shrink-0" strokeWidth={1.75} />
             Sign out
-          </Button>
+          </button>
         </div>
       </aside>
-      <main className="flex-1 overflow-auto">
-        <div className="mx-auto max-w-6xl px-8 py-8">
+
+      {/* Main content */}
+      <main
+        className="flex min-w-0 flex-1 flex-col overflow-auto"
+        style={{ background: 'var(--bg-page)' }}
+      >
+        <div className="mx-auto w-full max-w-5xl px-8 py-7">
           <Outlet />
         </div>
       </main>
     </div>
   );
 }
+
