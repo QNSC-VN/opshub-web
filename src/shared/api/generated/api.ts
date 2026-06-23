@@ -44,6 +44,23 @@ export interface MeResponse {
   roles: string[];
 }
 
+export interface EmployeeResponse {
+  id: string;
+  email: string;
+  displayName: string;
+  department: string | null;
+  jobTitle: string | null;
+  managerId: string | null;
+  roles: string[];
+  status: 'active' | 'on_leave' | 'offboarded';
+  createdAt: string;
+}
+
+export interface PagedEmployees {
+  data: EmployeeResponse[];
+  pageInfo: PageInfo;
+}
+
 export interface paths {
   '/v1/auth/entra-login': {
     post: {
@@ -89,6 +106,77 @@ export interface paths {
       responses: {
         204: { content: never };
         401: { content: { 'application/json': { message: string } } };
+      };
+    };
+  };
+  '/v1/employees': {
+    get: {
+      parameters: {
+        query?: {
+          status?: 'active' | 'on_leave' | 'offboarded';
+          department?: string;
+          search?: string;
+          limit?: number;
+          offset?: number;
+        };
+      };
+      responses: {
+        200: { content: { 'application/json': PagedEmployees } };
+      };
+    };
+    post: {
+      requestBody: {
+        content: {
+          'application/json': {
+            email: string;
+            displayName: string;
+            department?: string;
+            jobTitle?: string;
+            managerId?: string;
+            roles?: string[];
+          };
+        };
+      };
+      responses: {
+        200: { content: { 'application/json': EmployeeResponse } };
+      };
+    };
+  };
+  '/v1/employees/{employeeId}': {
+    get: {
+      parameters: { path: { employeeId: string } };
+      responses: {
+        200: { content: { 'application/json': EmployeeResponse } };
+      };
+    };
+    patch: {
+      parameters: { path: { employeeId: string } };
+      requestBody: {
+        content: {
+          'application/json': {
+            displayName?: string;
+            department?: string | null;
+            jobTitle?: string | null;
+            managerId?: string | null;
+            roles?: string[];
+          };
+        };
+      };
+      responses: {
+        200: { content: { 'application/json': EmployeeResponse } };
+      };
+    };
+  };
+  '/v1/employees/{employeeId}/status': {
+    patch: {
+      parameters: { path: { employeeId: string } };
+      requestBody: {
+        content: {
+          'application/json': { status: 'active' | 'on_leave' | 'offboarded' };
+        };
+      };
+      responses: {
+        200: { content: { 'application/json': EmployeeResponse } };
       };
     };
   };

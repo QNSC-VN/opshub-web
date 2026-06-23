@@ -11,6 +11,7 @@ import { AppShell } from '@/widgets/app-shell/app-shell';
 import { LoginPage } from '@/pages/login/login-page';
 import { DashboardPage } from '@/pages/dashboard/dashboard-page';
 import { AssetsPage } from '@/pages/assets/assets-page';
+import { PeoplePage } from '@/pages/people/people-page';
 import { PlaceholderPage } from '@/pages/placeholder/placeholder-page';
 
 const rootRoute = createRootRoute({ component: () => <Outlet /> });
@@ -58,6 +59,12 @@ const assetsRoute = createRoute({
   component: AssetsPage,
 });
 
+const peopleRoute = createRoute({
+  getParentRoute: () => shellRoute,
+  path: '/people',
+  component: PeoplePage,
+});
+
 const accessRoute = createRoute({
   getParentRoute: () => shellRoute,
   path: '/access',
@@ -87,6 +94,7 @@ const routeTree = rootRoute.addChildren([
   shellRoute.addChildren([
     dashboardRoute,
     assetsRoute,
+    peopleRoute,
     accessRoute,
     complianceRoute,
     workforceRoute,

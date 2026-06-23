@@ -5,6 +5,7 @@ import {
   ShieldCheck,
   ScanLine,
   CalendarClock,
+  Users,
   LogOut,
   ChevronRight,
 } from 'lucide-react';
@@ -20,6 +21,10 @@ interface NavGroup {
 const navGroups: NavGroup[] = [
   {
     items: [{ to: '/', label: 'Overview', icon: LayoutDashboard }],
+  },
+  {
+    label: 'Directory',
+    items: [{ to: '/people', label: 'People', icon: Users }],
   },
   {
     label: 'IT Operations',
