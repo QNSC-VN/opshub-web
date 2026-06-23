@@ -23,6 +23,8 @@ concurrency:
   group: deploy-${{ github.ref }}
   cancel-in-progress: false
 
+permissions: {}
+
 env:
   NODE_VERSION: '22'
   PNPM_VERSION: '10.33.2'

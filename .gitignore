@@ -10,11 +10,10 @@ dist-ssr/
 # Vite
 .vite/
 
-# Environment files (keep .env.example committed)
-.env
-.env.local
-.env.*.local
-*.local
+# Environment — NEVER commit secrets.
+# Catch all .env variants; .env.example is the only safe-to-commit file.
+.env*
+!.env.example
 
 # Editor & OS
 .DS_Store
