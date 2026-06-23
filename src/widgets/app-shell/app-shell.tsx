@@ -9,6 +9,7 @@ import {
   ChevronRight,
 } from 'lucide-react';
 import { useAuthStore } from '@/shared/api/auth-store';
+import { api } from '@/shared/api/client';
 import { cn } from '@/shared/lib/utils';
 
 interface NavGroup {
@@ -49,6 +50,16 @@ function OpsHubMark() {
 export function AppShell() {
   const navigate = useNavigate();
   const clear = useAuthStore((s) => s.clear);
+
+  async function handleLogout() {
+    try {
+      await api.POST('/v1/auth/logout', { credentials: 'include' } as never);
+    } catch {
+      // Best-effort — clear local state regardless
+    }
+    clear();
+    navigate({ to: '/login' });
+  }
 
   return (
     <div className="flex h-full">
@@ -105,10 +116,7 @@ export function AppShell() {
         <div className="mx-4 h-px bg-zinc-800" />
         <div className="p-2">
           <button
-            onClick={() => {
-              clear();
-              navigate({ to: '/login' });
-            }}
+            onClick={handleLogout}
             className="flex w-full items-center gap-2.5 rounded-md px-2 py-1.5 text-sm text-zinc-500 transition-colors hover:bg-zinc-800 hover:text-zinc-200"
           >
             <LogOut className="h-4 w-4 shrink-0" strokeWidth={1.75} />

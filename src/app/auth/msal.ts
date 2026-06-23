@@ -1,8 +1,4 @@
-import {
-  PublicClientApplication,
-  type Configuration,
-  type PopupRequest,
-} from '@azure/msal-browser';
+import { PublicClientApplication, type Configuration } from '@azure/msal-browser';
 
 /**
  * Entra ID (Azure AD) MSAL configuration.
@@ -27,21 +23,28 @@ const msalConfig: Configuration = {
     postLogoutRedirectUri: window.location.origin,
   },
   cache: {
-    // sessionStorage is safer than localStorage for SPAs (cleared on tab close).
+    // sessionStorage: cleared on tab close, not accessible by XSS on other tabs.
     cacheLocation: 'sessionStorage',
   },
 };
 
 /**
- * Singleton MSAL instance — initialised once and reused across the app.
- * Call `await msalInstance.initialize()` before using it.
+ * Singleton MSAL instance — initialised once at app boot.
+ * `bootstrapAuth` calls `initialize()` + `handleRedirectPromise()` before the
+ * router mounts, so the app never shows a login page when SSO is configured.
  */
 export const msalInstance = new PublicClientApplication(msalConfig);
 
-/** Scopes requested during sign-in. We only need the id_token claims. */
-export const loginRequest: PopupRequest = {
-  scopes: ['openid', 'profile', 'email'],
-};
-
 /** True when Entra SSO is configured via env vars. */
 export const isSsoConfigured = !!(tenantId && clientId);
+
+/**
+ * Trigger a full-page redirect to Microsoft.
+ * Called by the router's `beforeLoad` when the user is unauthenticated and SSO
+ * is configured — the user never sees an OpsHub login page.
+ */
+export async function triggerLogin(): Promise<void> {
+  await msalInstance.initialize();
+  await msalInstance.loginRedirect({ scopes: ['openid', 'profile', 'email'] });
+  // loginRedirect navigates away — code after this line never runs.
+}

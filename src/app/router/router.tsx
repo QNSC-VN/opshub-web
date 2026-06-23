@@ -6,6 +6,7 @@ import {
   redirect,
 } from '@tanstack/react-router';
 import { getToken } from '@/shared/api/auth-store';
+import { isSsoConfigured, triggerLogin } from '@/app/auth/msal';
 import { AppShell } from '@/widgets/app-shell/app-shell';
 import { LoginPage } from '@/pages/login/login-page';
 import { DashboardPage } from '@/pages/dashboard/dashboard-page';
@@ -14,19 +15,34 @@ import { PlaceholderPage } from '@/pages/placeholder/placeholder-page';
 
 const rootRoute = createRootRoute({ component: () => <Outlet /> });
 
+/**
+ * Dev-only login route — only used when SSO env vars are not set.
+ * In production the user never sees this page; `beforeLoad` sends them
+ * straight to Microsoft via loginRedirect().
+ */
 const loginRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/login',
   component: LoginPage,
 });
 
-/** Authenticated layout — redirects to /login when no token is present. */
+/** Authenticated layout shell. */
 const shellRoute = createRoute({
   getParentRoute: () => rootRoute,
   id: '_shell',
   component: AppShell,
-  beforeLoad: () => {
-    if (!getToken()) throw redirect({ to: '/login' });
+  beforeLoad: async () => {
+    if (getToken()) return; // already authenticated — proceed
+
+    if (isSsoConfigured) {
+      // Full-page redirect to Microsoft — no OpsHub login page shown.
+      await triggerLogin();
+      // triggerLogin() navigates away; this line never executes.
+      return;
+    }
+
+    // SSO not configured (dev mode) — fall back to the dev login page.
+    throw redirect({ to: '/login' });
   },
 });
 

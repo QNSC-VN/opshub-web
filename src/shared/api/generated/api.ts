@@ -34,7 +34,6 @@ export interface PagedAssets {
 
 export interface AuthResponse {
   accessToken: string;
-  tokenType: string;
   expiresIn: number;
 }
 
@@ -74,6 +73,22 @@ export interface paths {
     get: {
       responses: {
         200: { content: { 'application/json': MeResponse } };
+      };
+    };
+  };
+  '/v1/auth/refresh': {
+    post: {
+      responses: {
+        200: { content: { 'application/json': AuthResponse } };
+        401: { content: { 'application/json': { message: string } } };
+      };
+    };
+  };
+  '/v1/auth/logout': {
+    post: {
+      responses: {
+        204: { content: never };
+        401: { content: { 'application/json': { message: string } } };
       };
     };
   };
