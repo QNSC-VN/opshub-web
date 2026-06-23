@@ -9,7 +9,7 @@ function useAssetCount() {
     queryFn: async () => {
       const { data, error } = await api.GET('/v1/assets', { params: { query: { limit: 1 } } });
       if (error || !data) throw new Error('Failed to load assets');
-      return data.page.total;
+      return data.pageInfo.total;
     },
   });
 }

@@ -29,7 +29,7 @@ export interface PageInfo {
 
 export interface PagedAssets {
   data: AssetResponse[];
-  page: PageInfo;
+  pageInfo: PageInfo;
 }
 
 export interface AuthResponse {

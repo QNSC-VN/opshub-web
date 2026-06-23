@@ -12,7 +12,7 @@ const ROLE_PRESETS = ['it-admin', 'security', 'hr', 'manager', 'employee'];
 export function LoginPage() {
   const navigate = useNavigate();
   const setToken = useAuthStore((s) => s.setToken);
-  const [email, setEmail] = useState('admin@opshub.dev');
+  const [email, setEmail] = useState('admin@opshub.local');
   const [roles, setRoles] = useState<string[]>(['it-admin']);
   const [loading, setLoading] = useState(false);
 
