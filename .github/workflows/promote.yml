@@ -1,0 +1,85 @@
+# =============================================================================
+# Promote — manually promote one branch to another via PR
+# Primary use case: develop → main (for a production release)
+# =============================================================================
+name: Promote Branch
+
+on:
+  workflow_dispatch:
+    inputs:
+      branch_from:
+        description: Branch to promote
+        default: develop
+        required: true
+        type: string
+      branch_to:
+        description: Target branch
+        default: main
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  promote:
+    name: Open promotion PR
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      pull-requests: write
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Verify branches exist
+        run: |
+          git fetch origin
+          git ls-remote --exit-code origin "${{ inputs.branch_from }}" \
+            || (echo "Branch '${{ inputs.branch_from }}' not found" && exit 1)
+          git ls-remote --exit-code origin "${{ inputs.branch_to }}" \
+            || (echo "Branch '${{ inputs.branch_to }}' not found" && exit 1)
+
+      - name: Check for diff
+        id: diff
+        run: |
+          COUNT=$(git log origin/${{ inputs.branch_to }}..origin/${{ inputs.branch_from }} --oneline | wc -l | tr -d ' ')
+          echo "commits_ahead=$COUNT" >> "$GITHUB_OUTPUT"
+
+      - name: Open promotion PR
+        if: steps.diff.outputs.commits_ahead != '0'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          EXISTING=$(gh pr list \
+            --base "${{ inputs.branch_to }}" \
+            --head "${{ inputs.branch_from }}" \
+            --state open \
+            --json number \
+            --jq '.[0].number' 2>/dev/null || echo "")
+
+          if [ -n "$EXISTING" ]; then
+            echo "✓ Promotion PR #$EXISTING already open."
+            exit 0
+          fi
+
+          gh pr create \
+            --base "${{ inputs.branch_to }}" \
+            --head "${{ inputs.branch_from }}" \
+            --title "chore(release): promote ${{ inputs.branch_from }} to ${{ inputs.branch_to }}" \
+            --body "Promote ${{ inputs.branch_from }} → ${{ inputs.branch_to }}.
+
+Commits ahead: ${{ steps.diff.outputs.commits_ahead }}
+
+Checklist
+- CI is green on ${{ inputs.branch_from }}
+- CHANGELOG reviewed
+- No breaking changes requiring coordination
+- Squash-merge with a conventional commit title"
+
+      - name: Nothing to promote
+        if: steps.diff.outputs.commits_ahead == '0'
+        run: echo "✓ ${{ inputs.branch_from }} is already up to date with ${{ inputs.branch_to }}."

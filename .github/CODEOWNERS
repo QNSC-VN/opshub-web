@@ -1,0 +1,8 @@
+# Default reviewers for all files
+*                                   @nghiavan0610
+
+# Auth and API client (generated types + auth store)
+src/shared/api/                     @nghiavan0610
+
+# CI/CD workflows
+.github/workflows/                  @nghiavan0610
