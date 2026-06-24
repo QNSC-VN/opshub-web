@@ -16,6 +16,10 @@ import { AccessPage } from '@/pages/access/access-page';
 import { CompliancePage } from '@/pages/compliance/compliance-page';
 import { WorkforcePage } from '@/pages/workforce/workforce-page';
 import { WebhooksPage } from '@/pages/settings/webhooks-page';
+import { RequestsPage } from '@/pages/requests/requests-page';
+import { ReportsPage } from '@/pages/reports/reports-page';
+import { RbacPage } from '@/pages/settings/rbac-page';
+import { AuditLogsPage } from '@/pages/settings/audit-logs-page';
 
 const rootRoute = createRootRoute({ component: () => <Outlet /> });
 
@@ -92,6 +96,30 @@ const webhooksRoute = createRoute({
   component: WebhooksPage,
 });
 
+const requestsRoute = createRoute({
+  getParentRoute: () => shellRoute,
+  path: '/requests',
+  component: RequestsPage,
+});
+
+const reportsRoute = createRoute({
+  getParentRoute: () => shellRoute,
+  path: '/reports',
+  component: ReportsPage,
+});
+
+const rbacRoute = createRoute({
+  getParentRoute: () => shellRoute,
+  path: '/settings/access-control',
+  component: RbacPage,
+});
+
+const auditLogsRoute = createRoute({
+  getParentRoute: () => shellRoute,
+  path: '/settings/audit-logs',
+  component: AuditLogsPage,
+});
+
 const routeTree = rootRoute.addChildren([
   loginRoute,
   shellRoute.addChildren([
@@ -101,7 +129,11 @@ const routeTree = rootRoute.addChildren([
     accessRoute,
     complianceRoute,
     workforceRoute,
+    requestsRoute,
+    reportsRoute,
     webhooksRoute,
+    rbacRoute,
+    auditLogsRoute,
   ]),
 ]);
 

@@ -9,10 +9,15 @@ import {
   LogOut,
   ChevronRight,
   Webhook,
+  Inbox,
+  BarChart2,
+  ShieldAlert,
+  UserCog,
 } from 'lucide-react';
 import { useAuthStore } from '@/shared/api/auth-store';
 import { isSsoConfigured, msalInstance } from '@/app/auth/msal';
 import { cn } from '@/shared/lib/utils';
+import { NotificationBell } from '@/widgets/notifications/notification-bell';
 
 interface NavGroup {
   label?: string;
@@ -33,6 +38,7 @@ const navGroups: NavGroup[] = [
       { to: '/assets', label: 'Assets', icon: Laptop },
       { to: '/access', label: 'Access Requests', icon: ShieldCheck },
       { to: '/compliance', label: 'Compliance', icon: ScanLine },
+      { to: '/requests', label: 'Inbox', icon: Inbox },
     ],
   },
   {
@@ -40,8 +46,16 @@ const navGroups: NavGroup[] = [
     items: [{ to: '/workforce', label: 'Workforce', icon: CalendarClock }],
   },
   {
+    label: 'Analytics',
+    items: [{ to: '/reports', label: 'Reports', icon: BarChart2 }],
+  },
+  {
     label: 'Settings',
-    items: [{ to: '/settings/webhooks', label: 'Webhooks', icon: Webhook }],
+    items: [
+      { to: '/settings/webhooks', label: 'Webhooks', icon: Webhook },
+      { to: '/settings/access-control', label: 'Access Control', icon: UserCog },
+      { to: '/settings/audit-logs', label: 'Audit Logs', icon: ShieldAlert },
+    ],
   },
 ];
 
@@ -146,6 +160,10 @@ export function AppShell() {
         className="flex min-w-0 flex-1 flex-col overflow-auto"
         style={{ background: 'var(--bg-page)' }}
       >
+        {/* Top bar */}
+        <div className="flex h-12 shrink-0 items-center justify-end border-b border-zinc-100 bg-white px-6">
+          <NotificationBell />
+        </div>
         <div className="mx-auto w-full max-w-5xl px-8 py-7">
           <Outlet />
         </div>
