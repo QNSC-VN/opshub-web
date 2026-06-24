@@ -1,8 +1,10 @@
 import { useState } from 'react';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { Plus, Search, Pencil, X } from 'lucide-react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { Plus, Search, Pencil, X, UserPlus, UserMinus, CheckCircle } from 'lucide-react';
 import { api } from '@/shared/api/client';
-import type { EmployeeResponse } from '@/shared/api/generated/api';
+import type { components } from '@/shared/api/types';
+
+type EmployeeResponse = components['schemas']['EmployeeResponseDto'];
 
 // ── Config ────────────────────────────────────────────────────────────────────
 
@@ -37,7 +39,7 @@ function useEmployees(search: string, status: string) {
         params: {
           query: {
             search: search || undefined,
-            status: (status || undefined) as EmployeeResponse['status'] | undefined,
+            status: (status || undefined) as ('active' | 'on_leave' | 'offboarded') | undefined,
             limit: 100,
           },
         },
@@ -78,10 +80,10 @@ function StatusSelect({ employee, onSuccess }: { employee: EmployeeResponse; onS
   const [loading, setLoading] = useState(false);
 
   async function handleChange(e: React.ChangeEvent<HTMLSelectElement>) {
-    const status = e.target.value as EmployeeResponse['status'];
+    const status = e.target.value as 'active' | 'on_leave' | 'offboarded';
     setLoading(true);
-    await api.PATCH('/v1/employees/{employeeId}/status', {
-      params: { path: { employeeId: employee.id } },
+    await api.PATCH('/v1/employees/{id}/status', {
+      params: { path: { id: employee.id } },
       body: { status },
     });
     setLoading(false);
@@ -130,7 +132,7 @@ function EmployeeModal({ mode, employee, onClose, onSuccess }: ModalProps) {
     setForm((prev) => ({
       ...prev,
       roles: prev.roles.includes(role)
-        ? prev.roles.filter((r) => r !== role)
+        ? prev.roles.filter((r: string) => r !== role)
         : [...prev.roles, role],
     }));
 
@@ -151,8 +153,8 @@ function EmployeeModal({ mode, employee, onClose, onSuccess }: ModalProps) {
       });
       if (err) { setError('Failed to create employee'); setLoading(false); return; }
     } else if (employee) {
-      const { error: err } = await api.PATCH('/v1/employees/{employeeId}', {
-        params: { path: { employeeId: employee.id } },
+      const { error: err } = await api.PATCH('/v1/employees/{id}', {
+        params: { path: { id: employee.id } },
         body: {
           displayName: form.displayName,
           department: form.department || null,
@@ -267,6 +269,202 @@ function EmployeeModal({ mode, employee, onClose, onSuccess }: ModalProps) {
   );
 }
 
+// ── Onboarding modal ──────────────────────────────────────────────────────────
+
+interface OnboardingModalProps {
+  employee: EmployeeResponse;
+  onClose: () => void;
+  onSuccess: (requestId: string) => void;
+}
+
+function OnboardingModal({ employee, onClose, onSuccess }: OnboardingModalProps) {
+  const [startDate, setStartDate] = useState('');
+  const [department, setDepartment] = useState(employee.department ?? '');
+  const [jobTitle, setJobTitle] = useState(employee.jobTitle ?? '');
+  const [error, setError] = useState('');
+
+  const mutation = useMutation({
+    mutationFn: async () => {
+      const { data, error: err } = await api.POST('/v1/workforce/onboarding', {
+        body: {
+          employeeId: employee.id,
+          startDate,
+          department: department || undefined,
+          jobTitle: jobTitle || undefined,
+        },
+      });
+      if (err || !data) throw new Error('Failed to submit onboarding request');
+      return data;
+    },
+    onSuccess: (data) => onSuccess(data.requestId),
+    onError: (err: Error) => setError(err.message),
+  });
+
+  const inputClass =
+    'h-8 w-full rounded-md border border-zinc-200 bg-white px-3 text-sm text-zinc-900 placeholder:text-zinc-400 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20';
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/20"
+      onClick={(e) => e.target === e.currentTarget && onClose()}
+    >
+      <div className="w-full max-w-md rounded-xl bg-white shadow-xl">
+        <div className="flex items-center justify-between border-b border-zinc-100 px-5 py-4">
+          <h2 className="text-sm font-semibold text-zinc-900">Start onboarding — {employee.displayName}</h2>
+          <button onClick={onClose} className="rounded p-1 text-zinc-400 hover:bg-zinc-100 hover:text-zinc-600">
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+        <form
+          onSubmit={(e) => { e.preventDefault(); mutation.mutate(); }}
+          className="flex flex-col gap-4 p-5"
+        >
+          <div className="flex flex-col gap-1.5">
+            <label className="text-xs font-medium text-zinc-700">Start date *</label>
+            <input
+              type="date" required value={startDate}
+              onChange={(e) => setStartDate(e.target.value)}
+              className={inputClass}
+            />
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="flex flex-col gap-1.5">
+              <label className="text-xs font-medium text-zinc-700">Department</label>
+              <input
+                type="text" value={department}
+                onChange={(e) => setDepartment(e.target.value)}
+                className={inputClass} placeholder="Engineering"
+              />
+            </div>
+            <div className="flex flex-col gap-1.5">
+              <label className="text-xs font-medium text-zinc-700">Job title</label>
+              <input
+                type="text" value={jobTitle}
+                onChange={(e) => setJobTitle(e.target.value)}
+                className={inputClass} placeholder="Engineer"
+              />
+            </div>
+          </div>
+          <p className="text-xs text-zinc-400">
+            This creates a 3-step approval chain: Manager → IT → HR. You can track progress under the request ID returned.
+          </p>
+          {error && <p className="text-xs text-red-500">{error}</p>}
+          <div className="flex justify-end gap-2 pt-1">
+            <button
+              type="button" onClick={onClose}
+              className="h-8 rounded-md border border-zinc-200 px-3.5 text-sm font-medium text-zinc-600 hover:bg-zinc-50"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit" disabled={mutation.isPending}
+              className="h-8 rounded-md bg-blue-600 px-3.5 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-60"
+            >
+              {mutation.isPending ? 'Submitting…' : 'Start onboarding'}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
+// ── Offboarding modal ─────────────────────────────────────────────────────────
+
+interface OffboardingModalProps {
+  employee: EmployeeResponse;
+  onClose: () => void;
+  onSuccess: (requestId: string) => void;
+}
+
+function OffboardingModal({ employee, onClose, onSuccess }: OffboardingModalProps) {
+  const [reason, setReason] = useState('');
+  const [error, setError] = useState('');
+
+  const mutation = useMutation({
+    mutationFn: async () => {
+      const { data, error: err } = await api.POST('/v1/workforce/offboarding', {
+        body: {
+          employeeId: employee.id,
+          reason: reason || undefined,
+        },
+      });
+      if (err || !data) throw new Error('Failed to submit offboarding request');
+      return data;
+    },
+    onSuccess: (data) => onSuccess(data.requestId),
+    onError: (err: Error) => setError(err.message),
+  });
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/20"
+      onClick={(e) => e.target === e.currentTarget && onClose()}
+    >
+      <div className="w-full max-w-md rounded-xl bg-white shadow-xl">
+        <div className="flex items-center justify-between border-b border-zinc-100 px-5 py-4">
+          <h2 className="text-sm font-semibold text-zinc-900">Offboard — {employee.displayName}</h2>
+          <button onClick={onClose} className="rounded p-1 text-zinc-400 hover:bg-zinc-100 hover:text-zinc-600">
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+        <form
+          onSubmit={(e) => { e.preventDefault(); mutation.mutate(); }}
+          className="flex flex-col gap-4 p-5"
+        >
+          <div className="rounded-md border border-amber-200 bg-amber-50 px-4 py-3">
+            <p className="text-xs font-medium text-amber-800">
+              This will revoke all access, return assets, and deactivate the employee once approved.
+            </p>
+          </div>
+          <div className="flex flex-col gap-1.5">
+            <label className="text-xs font-medium text-zinc-700">Reason <span className="text-zinc-400">(optional)</span></label>
+            <textarea
+              value={reason}
+              onChange={(e) => setReason(e.target.value)}
+              rows={3}
+              placeholder="Resignation, end of contract…"
+              className="w-full rounded-md border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 placeholder:text-zinc-400 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 resize-none"
+            />
+          </div>
+          {error && <p className="text-xs text-red-500">{error}</p>}
+          <div className="flex justify-end gap-2 pt-1">
+            <button
+              type="button" onClick={onClose}
+              className="h-8 rounded-md border border-zinc-200 px-3.5 text-sm font-medium text-zinc-600 hover:bg-zinc-50"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit" disabled={mutation.isPending}
+              className="h-8 rounded-md bg-red-600 px-3.5 text-sm font-medium text-white hover:bg-red-700 disabled:opacity-60"
+            >
+              {mutation.isPending ? 'Submitting…' : 'Offboard employee'}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
+// ── Request submitted toast ───────────────────────────────────────────────────
+
+function RequestSubmittedBanner({ requestId, onClose }: { requestId: string; onClose: () => void }) {
+  return (
+    <div className="fixed bottom-6 right-6 z-50 flex items-start gap-3 rounded-xl border border-green-200 bg-white px-4 py-3.5 shadow-lg">
+      <CheckCircle className="mt-0.5 h-4 w-4 shrink-0 text-green-600" />
+      <div className="flex flex-col gap-0.5">
+        <p className="text-sm font-medium text-zinc-900">Request submitted</p>
+        <p className="text-xs text-zinc-500 font-mono">ID: {requestId}</p>
+      </div>
+      <button onClick={onClose} className="ml-2 rounded p-0.5 text-zinc-400 hover:text-zinc-600">
+        <X className="h-3.5 w-3.5" />
+      </button>
+    </div>
+  );
+}
+
 // ── Page ──────────────────────────────────────────────────────────────────────
 
 export function PeoplePage() {
@@ -274,6 +472,9 @@ export function PeoplePage() {
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('active');
   const [modal, setModal] = useState<{ mode: 'create' | 'edit'; employee?: EmployeeResponse } | null>(null);
+  const [onboarding, setOnboarding] = useState<EmployeeResponse | null>(null);
+  const [offboarding, setOffboarding] = useState<EmployeeResponse | null>(null);
+  const [requestBanner, setRequestBanner] = useState<string | null>(null);
 
   const employees = useEmployees(search, statusFilter);
   const refetch = () => qc.invalidateQueries({ queryKey: ['employees'] });
@@ -342,7 +543,7 @@ export function PeoplePage() {
             {employees.isError && (
               <tr><td colSpan={6} className="px-4 py-8 text-center text-sm text-red-500">Failed to load employees. Is the API running?</td></tr>
             )}
-            {employees.data?.data.length === 0 && (
+            {employees.data?.data?.length === 0 && (
               <tr>
                 <td colSpan={6} className="px-4 py-12 text-center">
                   <div className="flex flex-col items-center gap-2">
@@ -352,7 +553,7 @@ export function PeoplePage() {
                 </td>
               </tr>
             )}
-            {employees.data?.data.map((emp) => (
+            {employees.data?.data?.map((emp) => (
               <tr key={emp.id} className="transition-colors hover:bg-zinc-50">
                 <td className="px-4 py-3">
                   <div className="flex items-center gap-3">
@@ -380,19 +581,41 @@ export function PeoplePage() {
                   <StatusSelect employee={emp} onSuccess={refetch} />
                 </td>
                 <td className="px-4 py-3 text-right">
-                  <button
-                    onClick={() => setModal({ mode: 'edit', employee: emp })}
-                    className="rounded p-1 text-zinc-400 hover:bg-zinc-100 hover:text-zinc-600"
-                    title="Edit employee"
-                  >
-                    <Pencil className="h-3.5 w-3.5" />
-                  </button>
+                  <div className="flex items-center justify-end gap-1">
+                    {emp.status === 'active' && (
+                      <button
+                        onClick={() => setOnboarding(emp)}
+                        className="flex items-center gap-1 rounded px-2 py-1 text-xs font-medium text-blue-600 hover:bg-blue-50"
+                        title="Start onboarding"
+                      >
+                        <UserPlus className="h-3.5 w-3.5" />
+                        Onboard
+                      </button>
+                    )}
+                    {emp.status === 'active' && (
+                      <button
+                        onClick={() => setOffboarding(emp)}
+                        className="flex items-center gap-1 rounded px-2 py-1 text-xs font-medium text-red-500 hover:bg-red-50"
+                        title="Start offboarding"
+                      >
+                        <UserMinus className="h-3.5 w-3.5" />
+                        Offboard
+                      </button>
+                    )}
+                    <button
+                      onClick={() => setModal({ mode: 'edit', employee: emp })}
+                      className="rounded p-1 text-zinc-400 hover:bg-zinc-100 hover:text-zinc-600"
+                      title="Edit employee"
+                    >
+                      <Pencil className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
                 </td>
               </tr>
             ))}
           </tbody>
         </table>
-        {employees.data && (
+        {employees.data?.pageInfo && (
           <div className="border-t border-zinc-100 bg-zinc-50 px-4 py-2.5 text-xs text-zinc-400">
             {employees.data.pageInfo.total} employee{employees.data.pageInfo.total !== 1 ? 's' : ''}
           </div>
@@ -406,6 +629,26 @@ export function PeoplePage() {
           onClose={() => setModal(null)}
           onSuccess={refetch}
         />
+      )}
+
+      {onboarding && (
+        <OnboardingModal
+          employee={onboarding}
+          onClose={() => setOnboarding(null)}
+          onSuccess={(requestId) => { setOnboarding(null); setRequestBanner(requestId); refetch(); }}
+        />
+      )}
+
+      {offboarding && (
+        <OffboardingModal
+          employee={offboarding}
+          onClose={() => setOffboarding(null)}
+          onSuccess={(requestId) => { setOffboarding(null); setRequestBanner(requestId); refetch(); }}
+        />
+      )}
+
+      {requestBanner && (
+        <RequestSubmittedBanner requestId={requestBanner} onClose={() => setRequestBanner(null)} />
       )}
     </div>
   );

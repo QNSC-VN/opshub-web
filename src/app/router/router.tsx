@@ -12,7 +12,10 @@ import { LoginPage } from '@/pages/login/login-page';
 import { DashboardPage } from '@/pages/dashboard/dashboard-page';
 import { AssetsPage } from '@/pages/assets/assets-page';
 import { PeoplePage } from '@/pages/people/people-page';
-import { PlaceholderPage } from '@/pages/placeholder/placeholder-page';
+import { AccessPage } from '@/pages/access/access-page';
+import { CompliancePage } from '@/pages/compliance/compliance-page';
+import { WorkforcePage } from '@/pages/workforce/workforce-page';
+import { WebhooksPage } from '@/pages/settings/webhooks-page';
 
 const rootRoute = createRootRoute({ component: () => <Outlet /> });
 
@@ -68,25 +71,25 @@ const peopleRoute = createRoute({
 const accessRoute = createRoute({
   getParentRoute: () => shellRoute,
   path: '/access',
-  component: () => (
-    <PlaceholderPage title="Access Requests" description="Temporary privileged access workflow." />
-  ),
-});
+  component: AccessPage,
+});;
 
 const complianceRoute = createRoute({
   getParentRoute: () => shellRoute,
   path: '/compliance',
-  component: () => (
-    <PlaceholderPage title="Compliance" description="Software catalog and endpoint findings." />
-  ),
-});
+  component: CompliancePage,
+});;
 
 const workforceRoute = createRoute({
   getParentRoute: () => shellRoute,
   path: '/workforce',
-  component: () => (
-    <PlaceholderPage title="Workforce" description="Timesheets, leave, overtime and shifts." />
-  ),
+  component: WorkforcePage,
+});;
+
+const webhooksRoute = createRoute({
+  getParentRoute: () => shellRoute,
+  path: '/settings/webhooks',
+  component: WebhooksPage,
 });
 
 const routeTree = rootRoute.addChildren([
@@ -98,6 +101,7 @@ const routeTree = rootRoute.addChildren([
     accessRoute,
     complianceRoute,
     workforceRoute,
+    webhooksRoute,
   ]),
 ]);
 

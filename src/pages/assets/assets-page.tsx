@@ -93,7 +93,7 @@ export function AssetsPage() {
                 </td>
               </tr>
             )}
-            {assets.data?.data.length === 0 && (
+            {assets.data?.data?.length === 0 && (
               <tr>
                 <td colSpan={5} className="px-4 py-12 text-center">
                   <div className="flex flex-col items-center gap-2">
@@ -103,7 +103,7 @@ export function AssetsPage() {
                 </td>
               </tr>
             )}
-            {assets.data?.data.map((a) => (
+            {assets.data?.data?.map((a) => (
               <tr key={a.id} className="transition-colors hover:bg-zinc-50">
                 <td className="px-4 py-3 font-mono text-xs font-medium text-zinc-800">{a.assetTag}</td>
                 <td className="px-4 py-3 text-zinc-600 capitalize">{a.type}</td>
@@ -133,7 +133,7 @@ export function AssetsPage() {
             ))}
           </tbody>
         </table>
-        {assets.data && (
+        {assets.data?.pageInfo && (
           <div className="border-t border-zinc-100 bg-zinc-50 px-4 py-2.5 text-xs text-zinc-400">
             {assets.data.pageInfo.total} asset{assets.data.pageInfo.total !== 1 ? "s" : ""}
           </div>

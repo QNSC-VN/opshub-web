@@ -11,7 +11,7 @@ function useAssetCount() {
         params: { query: { limit: 1 } },
       });
       if (error || !data) throw new Error("Failed to load assets");
-      return data.pageInfo.total;
+      return data.pageInfo?.total ?? 0;
     },
   });
 }

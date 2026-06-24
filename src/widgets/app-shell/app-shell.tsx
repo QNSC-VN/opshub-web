@@ -8,6 +8,7 @@ import {
   Users,
   LogOut,
   ChevronRight,
+  Webhook,
 } from 'lucide-react';
 import { useAuthStore } from '@/shared/api/auth-store';
 import { isSsoConfigured, msalInstance } from '@/app/auth/msal';
@@ -37,6 +38,10 @@ const navGroups: NavGroup[] = [
   {
     label: 'Workforce',
     items: [{ to: '/workforce', label: 'Workforce', icon: CalendarClock }],
+  },
+  {
+    label: 'Settings',
+    items: [{ to: '/settings/webhooks', label: 'Webhooks', icon: Webhook }],
   },
 ];
 
