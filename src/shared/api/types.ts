@@ -97,3 +97,6 @@ export type FindingsSummaryResponse = components['schemas']['FindingsSummaryResp
 export type AssetUtilizationResponse = components['schemas']['AssetUtilizationResponseDto'];
 export type LeaveSummaryResponse = components['schemas']['LeaveSummaryResponseDto'];
 export type OvertimeSummaryResponse = components['schemas']['OvertimeSummaryResponseDto'];
+
+// Notification preferences
+export type NotificationPreferenceResponse = components['schemas']['PreferenceResponseDto'];

@@ -13,11 +13,30 @@ import {
   BarChart2,
   ShieldAlert,
   UserCog,
+  BellRing,
+  UserCircle2,
 } from 'lucide-react';
 import { useAuthStore } from '@/shared/api/auth-store';
 import { isSsoConfigured, msalInstance } from '@/app/auth/msal';
 import { cn } from '@/shared/lib/utils';
 import { NotificationBell } from '@/widgets/notifications/notification-bell';
+import { useQuery } from '@tanstack/react-query';
+import { api } from '@/shared/api/client';
+import type { components } from '@/shared/api/generated/api';
+
+type MeDto = components['schemas']['MeResponseDto'];
+
+function useMe() {
+  return useQuery<MeDto>({
+    queryKey: ['auth', 'me'],
+    queryFn: async () => {
+      const { data, error } = await api.GET('/v1/auth/me');
+      if (error || !data) throw new Error();
+      return data as MeDto;
+    },
+    staleTime: 5 * 60 * 1000,
+  });
+}
 
 interface NavGroup {
   label?: string;
@@ -55,6 +74,7 @@ const navGroups: NavGroup[] = [
       { to: '/settings/webhooks', label: 'Webhooks', icon: Webhook },
       { to: '/settings/access-control', label: 'Access Control', icon: UserCog },
       { to: '/settings/audit-logs', label: 'Audit Logs', icon: ShieldAlert },
+      { to: '/settings/notification-preferences', label: 'Notifications', icon: BellRing },
     ],
   },
 ];
@@ -71,9 +91,48 @@ function OpsHubMark() {
   );
 }
 
+/** Avatar initials circle for the sidebar user footer. */
+function AvatarChip({ name, email }: { name: string; email: string }) {
+  const initials = name
+    .split(' ')
+    .slice(0, 2)
+    .map((w) => w[0]?.toUpperCase() ?? '')
+    .join('');
+  const colors = ['bg-blue-500', 'bg-violet-500', 'bg-emerald-500', 'bg-amber-500', 'bg-rose-500', 'bg-cyan-500'];
+  const idx = [...email].reduce((acc, c) => acc + c.charCodeAt(0), 0) % colors.length;
+  return (
+    <span className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full ${colors[idx]} text-[10px] font-semibold text-white`}>
+      {initials || '?'}
+    </span>
+  );
+}
+
+/** Sidebar bottom — link to My Profile, shows current user name. */
+function UserFooter() {
+  const { data: me } = useMe();
+  return (
+    <Link
+      to="/profile"
+      className={cn(
+        'group flex items-center gap-2.5 rounded-md px-2 py-1.5 text-sm transition-colors',
+        'text-zinc-400 hover:bg-zinc-800 hover:text-zinc-100',
+      )}
+      activeProps={{ className: 'group flex items-center gap-2.5 rounded-md px-2 py-1.5 text-sm bg-zinc-800 text-white' }}
+    >
+      {me ? (
+        <AvatarChip name={me.name} email={me.email} />
+      ) : (
+        <UserCircle2 className="h-4 w-4 shrink-0" strokeWidth={1.75} />
+      )}
+      <span className="flex-1 truncate text-xs">{me?.name ?? 'My profile'}</span>
+    </Link>
+  );
+}
+
 export function AppShell() {
   const navigate = useNavigate();
   const clear = useAuthStore((s) => s.clear);
+  const { data: me } = useMe();
 
   async function handleLogout() {
     try {
@@ -142,9 +201,12 @@ export function AppShell() {
           ))}
         </nav>
 
-        {/* Bottom: sign out */}
+        {/* Bottom: user footer */}
         <div className="mx-4 h-px bg-zinc-800" />
-        <div className="p-2">
+        <div className="p-2 flex flex-col gap-0.5">
+          {/* Profile link */}
+          <UserFooter />
+          {/* Sign out */}
           <button
             onClick={handleLogout}
             className="flex w-full items-center gap-2.5 rounded-md px-2 py-1.5 text-sm text-zinc-500 transition-colors hover:bg-zinc-800 hover:text-zinc-200"
@@ -161,8 +223,20 @@ export function AppShell() {
         style={{ background: 'var(--bg-page)' }}
       >
         {/* Top bar */}
-        <div className="flex h-12 shrink-0 items-center justify-end border-b border-zinc-100 bg-white px-6">
-          <NotificationBell />
+        <div className="flex h-12 shrink-0 items-center justify-between border-b border-zinc-100 bg-white px-6">
+          <div />{/* spacer — breadcrumb can go here later */}
+          <div className="flex items-center gap-3">
+            <NotificationBell />
+            {/* divider */}
+            <div className="h-5 w-px bg-zinc-200" />
+            <Link
+              to="/profile"
+              className="flex items-center gap-2 rounded-lg px-2 py-1 text-sm text-zinc-600 hover:bg-zinc-50"
+            >
+              <UserCircle2 className="h-4 w-4 text-zinc-400" strokeWidth={1.75} />
+              <span className="text-xs font-medium text-zinc-700 hidden sm:block">{me?.name ?? ''}</span>
+            </Link>
+          </div>
         </div>
         <div className="mx-auto w-full max-w-5xl px-8 py-7">
           <Outlet />

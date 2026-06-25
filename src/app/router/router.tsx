@@ -20,6 +20,8 @@ import { RequestsPage } from '@/pages/requests/requests-page';
 import { ReportsPage } from '@/pages/reports/reports-page';
 import { RbacPage } from '@/pages/settings/rbac-page';
 import { AuditLogsPage } from '@/pages/settings/audit-logs-page';
+import { NotificationPreferencesPage } from '@/pages/notifications/notification-preferences-page';
+import { ProfilePage } from '@/pages/profile/profile-page';
 
 const rootRoute = createRootRoute({ component: () => <Outlet /> });
 
@@ -120,6 +122,18 @@ const auditLogsRoute = createRoute({
   component: AuditLogsPage,
 });
 
+const notificationPreferencesRoute = createRoute({
+  getParentRoute: () => shellRoute,
+  path: '/settings/notification-preferences',
+  component: NotificationPreferencesPage,
+});
+
+const profileRoute = createRoute({
+  getParentRoute: () => shellRoute,
+  path: '/profile',
+  component: ProfilePage,
+});
+
 const routeTree = rootRoute.addChildren([
   loginRoute,
   shellRoute.addChildren([
@@ -134,6 +148,8 @@ const routeTree = rootRoute.addChildren([
     webhooksRoute,
     rbacRoute,
     auditLogsRoute,
+    notificationPreferencesRoute,
+    profileRoute,
   ]),
 ]);
 
