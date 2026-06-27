@@ -1,4 +1,5 @@
-import { useEffect, useState } from 'react';
+import { Component, useEffect, useState } from 'react';
+import type { ReactNode } from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { RouterProvider } from '@tanstack/react-router';
 import { Toaster } from 'sonner';
@@ -7,8 +8,62 @@ import { bootstrapAuth } from '@/shared/api/auth-bootstrap';
 import { useThemeStore } from '@/shared/lib/theme';
 
 const queryClient = new QueryClient({
-  defaultOptions: { queries: { retry: 1, refetchOnWindowFocus: false } },
+  defaultOptions: {
+    queries: {
+      retry: (failureCount, error) => {
+        if ((error as { status?: number })?.status === 401) return false;
+        return failureCount < 1;
+      },
+      refetchOnWindowFocus: false,
+    },
+  },
 });
+
+class ErrorBoundary extends Component<{ children: ReactNode }, { error: Error | null }> {
+  state = { error: null };
+
+  static getDerivedStateFromError(error: Error) {
+    return { error };
+  }
+
+  render() {
+    if (this.state.error) {
+      return (
+        <div
+          style={{
+            display: 'flex',
+            flexDirection: 'column',
+            height: '100dvh',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: '12px',
+            fontFamily: 'sans-serif',
+            color: '#374151',
+          }}
+        >
+          <p style={{ fontWeight: 600, fontSize: '16px' }}>Something went wrong</p>
+          <p style={{ fontSize: '13px', color: '#6b7280' }}>
+            {(this.state.error as Error).message}
+          </p>
+          <button
+            onClick={() => window.location.reload()}
+            style={{
+              padding: '6px 16px',
+              border: '1px solid #d1d5db',
+              borderRadius: '6px',
+              cursor: 'pointer',
+              background: '#fff',
+              fontSize: '13px',
+            }}
+          >
+            Reload
+          </button>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
 
 /**
  * On first render, silently attempt to restore the session from the HttpOnly
@@ -53,10 +108,12 @@ export function AppProviders() {
   }
 
   return (
-    <QueryClientProvider client={queryClient}>
-      <RouterProvider router={router} />
-      <Toaster richColors position="top-right" theme={resolvedTheme} />
-    </QueryClientProvider>
+    <ErrorBoundary>
+      <QueryClientProvider client={queryClient}>
+        <RouterProvider router={router} />
+        <Toaster richColors position="top-right" theme={resolvedTheme} />
+      </QueryClientProvider>
+    </ErrorBoundary>
   );
 }
 

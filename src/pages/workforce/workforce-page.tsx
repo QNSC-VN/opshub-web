@@ -1,13 +1,11 @@
 import { useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { Plus, X, Clock, Calendar, Zap, Moon, History, Wifi, WifiOff } from 'lucide-react';
-import { getToken } from '@/shared/api/auth-store';
+import { Plus, X, Clock, Calendar, Zap, Moon } from 'lucide-react';
 import { toast } from 'sonner';
 import { api } from '@/shared/api/client';
 import { SlideOver, SlideOverSection } from '@/shared/ui/slide-over';
 import { ActivityTimeline } from '@/shared/ui/activity-timeline';
 import { PhotoUploadWidget } from '@/shared/ui/photo-upload';
-import { AttendanceClock } from '@/widgets/attendance/attendance-clock';
 import type {
   TimesheetResponse,
   LeaveResponse,
@@ -77,23 +75,16 @@ interface LogTimesheetModalProps {
 function LogTimesheetModal({ onClose, onSuccess }: LogTimesheetModalProps) {
   const [loading, setLoading] = useState(false);
   const [form, setForm] = useState({ workDate: '', minutesWorked: 480, note: '' });
-  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
-
-  function validate(): boolean {
-    const errs: Record<string, string> = {};
-    if (!form.workDate) errs.workDate = 'Work date is required';
-    if (!form.minutesWorked || form.minutesWorked < 1) errs.minutesWorked = 'Must be at least 1 minute';
-    if (form.minutesWorked > 1440) errs.minutesWorked = 'Cannot exceed 1440 minutes (24h)';
-    setFieldErrors(errs);
-    return Object.keys(errs).length === 0;
-  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!validate()) return;
     setLoading(true);
     const { error } = await api.POST('/v1/workforce/timesheets', {
-      body: { workDate: form.workDate, minutesWorked: form.minutesWorked, note: form.note || undefined },
+      body: {
+        workDate: form.workDate,
+        minutesWorked: form.minutesWorked,
+        note: form.note || undefined,
+      },
     });
     setLoading(false);
     if (error) { toast.error('Failed to log timesheet'); return; }
@@ -101,8 +92,6 @@ function LogTimesheetModal({ onClose, onSuccess }: LogTimesheetModalProps) {
     onSuccess();
     onClose();
   }
-
-  const errCls = 'border-red-400 focus:border-red-500 focus:ring-red-200';
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/20"
@@ -112,34 +101,20 @@ function LogTimesheetModal({ onClose, onSuccess }: LogTimesheetModalProps) {
           <h2 className="text-sm font-semibold text-fg">Log timesheet</h2>
           <button onClick={onClose} className="rounded p-1 text-fg-subtle hover:bg-surface-hover hover:text-fg-muted"><X className="h-4 w-4" /></button>
         </div>
-        <form onSubmit={handleSubmit} noValidate className="flex flex-col gap-4 p-5">
+        <form onSubmit={handleSubmit} className="flex flex-col gap-4 p-5">
           <div className="flex flex-col gap-1.5">
-            <label htmlFor="ts-date" className="text-xs font-medium text-fg-muted">Work date <span className="text-red-400">*</span></label>
-            <input
-              id="ts-date" type="date" value={form.workDate}
-              onChange={(e) => { setForm(f => ({ ...f, workDate: e.target.value })); setFieldErrors(fe => ({ ...fe, workDate: '' })); }}
-              aria-invalid={!!fieldErrors.workDate}
-              aria-describedby={fieldErrors.workDate ? 'ts-date-err' : undefined}
-              className={[inputClass, fieldErrors.workDate ? errCls : ''].filter(Boolean).join(' ')}
-            />
-            {fieldErrors.workDate && <p id="ts-date-err" role="alert" className="text-xs text-red-500">{fieldErrors.workDate}</p>}
+            <label className="text-xs font-medium text-fg-muted">Work date *</label>
+            <input type="date" required value={form.workDate} onChange={(e) => setForm(f => ({ ...f, workDate: e.target.value }))} className={inputClass} />
           </div>
           <div className="flex flex-col gap-1.5">
-            <label htmlFor="ts-mins" className="text-xs font-medium text-fg-muted">Minutes worked <span className="text-red-400">*</span></label>
-            <input
-              id="ts-mins" type="number" min={1} max={1440} value={form.minutesWorked}
-              onChange={(e) => { setForm(f => ({ ...f, minutesWorked: Number(e.target.value) })); setFieldErrors(fe => ({ ...fe, minutesWorked: '' })); }}
-              aria-invalid={!!fieldErrors.minutesWorked}
-              aria-describedby={fieldErrors.minutesWorked ? 'ts-mins-err' : undefined}
-              className={[inputClass, fieldErrors.minutesWorked ? errCls : ''].filter(Boolean).join(' ')}
-            />
-            {fieldErrors.minutesWorked
-              ? <p id="ts-mins-err" role="alert" className="text-xs text-red-500">{fieldErrors.minutesWorked}</p>
-              : <p className="text-xs text-fg-subtle">{Math.floor(form.minutesWorked / 60)}h {form.minutesWorked % 60}m</p>}
+            <label className="text-xs font-medium text-fg-muted">Minutes worked *</label>
+            <input type="number" required min={1} max={1440} value={form.minutesWorked}
+              onChange={(e) => setForm(f => ({ ...f, minutesWorked: Number(e.target.value) }))} className={inputClass} />
+            <p className="text-xs text-fg-subtle">{Math.floor(form.minutesWorked / 60)}h {form.minutesWorked % 60}m</p>
           </div>
           <div className="flex flex-col gap-1.5">
-            <label htmlFor="ts-note" className="text-xs font-medium text-fg-muted">Note</label>
-            <textarea id="ts-note" value={form.note} onChange={(e) => setForm(f => ({ ...f, note: e.target.value }))}
+            <label className="text-xs font-medium text-fg-muted">Note</label>
+            <textarea value={form.note} onChange={(e) => setForm(f => ({ ...f, note: e.target.value }))}
               rows={2} placeholder="Optional notes…"
               className="w-full resize-none rounded-md border border-border bg-surface px-3 py-2 text-sm text-fg placeholder:text-fg-subtle focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/20" />
           </div>
@@ -319,21 +294,9 @@ interface RequestLeaveModalProps {
 function RequestLeaveModal({ onClose, onSuccess }: RequestLeaveModalProps) {
   const [loading, setLoading] = useState(false);
   const [form, setForm] = useState({ leaveType: 'annual' as LeaveType, startDate: '', endDate: '', reason: '' });
-  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
 
-  function validate(): boolean {
-    const errs: Record<string, string> = {};
-    if (!form.startDate) errs.startDate = 'Start date is required';
-    if (!form.endDate) errs.endDate = 'End date is required';
-    if (form.startDate && form.endDate && form.endDate < form.startDate)
-      errs.endDate = 'End date must be on or after start date';
-    setFieldErrors(errs);
-    return Object.keys(errs).length === 0;
-  }
-
-  async function handleSubmit(e: React.FormEvent) {
+async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!validate()) return;
     setLoading(true);
     const { error } = await api.POST('/v1/workforce/leave', {
       body: {
@@ -350,8 +313,6 @@ function RequestLeaveModal({ onClose, onSuccess }: RequestLeaveModalProps) {
     onClose();
   }
 
-  const errCls = 'border-red-400 focus:border-red-500 focus:ring-red-200';
-
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/20"
       onClick={(e) => e.target === e.currentTarget && onClose()}>
@@ -360,10 +321,11 @@ function RequestLeaveModal({ onClose, onSuccess }: RequestLeaveModalProps) {
           <h2 className="text-sm font-semibold text-fg">Request leave</h2>
           <button onClick={onClose} className="rounded p-1 text-fg-subtle hover:bg-surface-hover hover:text-fg-muted"><X className="h-4 w-4" /></button>
         </div>
-        <form onSubmit={handleSubmit} noValidate className="flex flex-col gap-4 p-5">
+        <form onSubmit={handleSubmit} className="flex flex-col gap-4 p-5">
           <div className="flex flex-col gap-1.5">
-            <label htmlFor="lv-type" className="text-xs font-medium text-fg-muted">Leave type <span className="text-red-400">*</span></label>
-            <select id="lv-type" value={form.leaveType} onChange={(e) => setForm(f => ({ ...f, leaveType: e.target.value as LeaveType }))} className={inputClass}>
+            <label className="text-xs font-medium text-fg-muted">Leave type *</label>
+            <select value={form.leaveType} onChange={(e) => setForm(f => ({ ...f, leaveType: e.target.value as LeaveType }))}
+              className={inputClass}>
               <option value="annual">Annual</option>
               <option value="sick">Sick</option>
               <option value="unpaid">Unpaid</option>
@@ -373,31 +335,17 @@ function RequestLeaveModal({ onClose, onSuccess }: RequestLeaveModalProps) {
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div className="flex flex-col gap-1.5">
-              <label htmlFor="lv-start" className="text-xs font-medium text-fg-muted">Start date <span className="text-red-400">*</span></label>
-              <input
-                id="lv-start" type="date" value={form.startDate}
-                onChange={(e) => { setForm(f => ({ ...f, startDate: e.target.value })); setFieldErrors(fe => ({ ...fe, startDate: '' })); }}
-                aria-invalid={!!fieldErrors.startDate}
-                aria-describedby={fieldErrors.startDate ? 'lv-start-err' : undefined}
-                className={[inputClass, fieldErrors.startDate ? errCls : ''].filter(Boolean).join(' ')}
-              />
-              {fieldErrors.startDate && <p id="lv-start-err" role="alert" className="text-xs text-red-500">{fieldErrors.startDate}</p>}
+              <label className="text-xs font-medium text-fg-muted">Start date *</label>
+              <input type="date" required value={form.startDate} onChange={(e) => setForm(f => ({ ...f, startDate: e.target.value }))} className={inputClass} />
             </div>
             <div className="flex flex-col gap-1.5">
-              <label htmlFor="lv-end" className="text-xs font-medium text-fg-muted">End date <span className="text-red-400">*</span></label>
-              <input
-                id="lv-end" type="date" value={form.endDate}
-                onChange={(e) => { setForm(f => ({ ...f, endDate: e.target.value })); setFieldErrors(fe => ({ ...fe, endDate: '' })); }}
-                aria-invalid={!!fieldErrors.endDate}
-                aria-describedby={fieldErrors.endDate ? 'lv-end-err' : undefined}
-                className={[inputClass, fieldErrors.endDate ? errCls : ''].filter(Boolean).join(' ')}
-              />
-              {fieldErrors.endDate && <p id="lv-end-err" role="alert" className="text-xs text-red-500">{fieldErrors.endDate}</p>}
+              <label className="text-xs font-medium text-fg-muted">End date *</label>
+              <input type="date" required value={form.endDate} onChange={(e) => setForm(f => ({ ...f, endDate: e.target.value }))} className={inputClass} />
             </div>
           </div>
           <div className="flex flex-col gap-1.5">
-            <label htmlFor="lv-reason" className="text-xs font-medium text-fg-muted">Reason</label>
-            <textarea id="lv-reason" value={form.reason} onChange={(e) => setForm(f => ({ ...f, reason: e.target.value }))}
+            <label className="text-xs font-medium text-fg-muted">Reason</label>
+            <textarea value={form.reason} onChange={(e) => setForm(f => ({ ...f, reason: e.target.value }))}
               rows={2} placeholder="Optional reason…"
               className="w-full resize-none rounded-md border border-border bg-surface px-3 py-2 text-sm text-fg placeholder:text-fg-subtle focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/20" />
           </div>
@@ -590,21 +538,9 @@ interface LogOvertimeModalProps {
 function LogOvertimeModal({ onClose, onSuccess }: LogOvertimeModalProps) {
   const [loading, setLoading] = useState(false);
   const [form, setForm] = useState({ workDate: '', hours: 2, reason: '' });
-  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
-
-  function validate(): boolean {
-    const errs: Record<string, string> = {};
-    if (!form.workDate) errs.workDate = 'Work date is required';
-    if (!form.hours || form.hours < 0.5) errs.hours = 'Enter at least 0.5 hours';
-    if (form.hours > 24) errs.hours = 'Cannot exceed 24 hours';
-    if (!form.reason.trim()) errs.reason = 'Reason is required';
-    setFieldErrors(errs);
-    return Object.keys(errs).length === 0;
-  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!validate()) return;
     setLoading(true);
     const { error } = await api.POST('/v1/workforce/overtime', {
       body: { workDate: form.workDate, hours: form.hours, reason: form.reason },
@@ -616,8 +552,6 @@ function LogOvertimeModal({ onClose, onSuccess }: LogOvertimeModalProps) {
     onClose();
   }
 
-  const errCls = 'border-red-400 focus:border-red-500 focus:ring-red-200';
-
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/20"
       onClick={(e) => e.target === e.currentTarget && onClose()}>
@@ -626,45 +560,21 @@ function LogOvertimeModal({ onClose, onSuccess }: LogOvertimeModalProps) {
           <h2 className="text-sm font-semibold text-fg">Log overtime</h2>
           <button onClick={onClose} className="rounded p-1 text-fg-subtle hover:bg-surface-hover hover:text-fg-muted"><X className="h-4 w-4" /></button>
         </div>
-        <form onSubmit={handleSubmit} noValidate className="flex flex-col gap-4 p-5">
+        <form onSubmit={handleSubmit} className="flex flex-col gap-4 p-5">
           <div className="flex flex-col gap-1.5">
-            <label htmlFor="ot-date" className="text-xs font-medium text-fg-muted">Work date <span className="text-red-400">*</span></label>
-            <input
-              id="ot-date" type="date" value={form.workDate}
-              onChange={(e) => { setForm(f => ({ ...f, workDate: e.target.value })); setFieldErrors(fe => ({ ...fe, workDate: '' })); }}
-              aria-invalid={!!fieldErrors.workDate}
-              aria-describedby={fieldErrors.workDate ? 'ot-date-err' : undefined}
-              className={[inputClass, fieldErrors.workDate ? errCls : ''].filter(Boolean).join(' ')}
-            />
-            {fieldErrors.workDate && <p id="ot-date-err" role="alert" className="text-xs text-red-500">{fieldErrors.workDate}</p>}
+            <label className="text-xs font-medium text-fg-muted">Work date *</label>
+            <input type="date" required value={form.workDate} onChange={(e) => setForm(f => ({ ...f, workDate: e.target.value }))} className={inputClass} />
           </div>
           <div className="flex flex-col gap-1.5">
-            <label htmlFor="ot-hours" className="text-xs font-medium text-fg-muted">Hours <span className="text-red-400">*</span></label>
-            <input
-              id="ot-hours" type="number" min={0.5} max={24} step={0.5} value={form.hours}
-              onChange={(e) => { setForm(f => ({ ...f, hours: Number(e.target.value) })); setFieldErrors(fe => ({ ...fe, hours: '' })); }}
-              aria-invalid={!!fieldErrors.hours}
-              aria-describedby={fieldErrors.hours ? 'ot-hours-err' : undefined}
-              className={[inputClass, fieldErrors.hours ? errCls : ''].filter(Boolean).join(' ')}
-            />
-            {fieldErrors.hours && <p id="ot-hours-err" role="alert" className="text-xs text-red-500">{fieldErrors.hours}</p>}
+            <label className="text-xs font-medium text-fg-muted">Hours *</label>
+            <input type="number" required min={0.5} max={24} step={0.5} value={form.hours}
+              onChange={(e) => setForm(f => ({ ...f, hours: Number(e.target.value) }))} className={inputClass} />
           </div>
           <div className="flex flex-col gap-1.5">
-            <label htmlFor="ot-reason" className="text-xs font-medium text-fg-muted">Reason <span className="text-red-400">*</span></label>
-            <textarea
-              id="ot-reason"
-              value={form.reason}
-              onChange={(e) => { setForm(f => ({ ...f, reason: e.target.value })); setFieldErrors(fe => ({ ...fe, reason: '' })); }}
-              rows={2} placeholder="Why was overtime worked?"
-              aria-invalid={!!fieldErrors.reason}
-              aria-describedby={fieldErrors.reason ? 'ot-reason-err' : undefined}
-              className={['w-full resize-none rounded-md border bg-surface px-3 py-2 text-sm text-fg placeholder:text-fg-subtle focus:outline-none focus:ring-2',
-                fieldErrors.reason
-                  ? 'border-red-400 focus:border-red-500 focus:ring-red-200'
-                  : 'border-border focus:border-accent focus:ring-accent/20',
-              ].join(' ')}
-            />
-            {fieldErrors.reason && <p id="ot-reason-err" role="alert" className="text-xs text-red-500">{fieldErrors.reason}</p>}
+            <label className="text-xs font-medium text-fg-muted">Reason *</label>
+            <textarea value={form.reason} onChange={(e) => setForm(f => ({ ...f, reason: e.target.value }))}
+              required rows={2} placeholder="Why was overtime worked?"
+              className="w-full resize-none rounded-md border border-border bg-surface px-3 py-2 text-sm text-fg placeholder:text-fg-subtle focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/20" />
           </div>
           <div className="flex justify-end gap-2 pt-1">
             <button type="button" onClick={onClose} className="h-8 rounded-md border border-border px-3.5 text-sm font-medium text-fg-muted hover:bg-surface-hover">Cancel</button>
@@ -826,21 +736,9 @@ interface LogShiftModalProps {
 function LogShiftModal({ onClose, onSuccess }: LogShiftModalProps) {
   const [loading, setLoading] = useState(false);
   const [form, setForm] = useState({ shiftType: 'night' as ShiftType, startsAt: '', endsAt: '', note: '' });
-  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
-
-  function validate(): boolean {
-    const errs: Record<string, string> = {};
-    if (!form.startsAt) errs.startsAt = 'Start time is required';
-    if (!form.endsAt) errs.endsAt = 'End time is required';
-    if (form.startsAt && form.endsAt && form.endsAt <= form.startsAt)
-      errs.endsAt = 'End time must be after start time';
-    setFieldErrors(errs);
-    return Object.keys(errs).length === 0;
-  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!validate()) return;
     setLoading(true);
     // datetime-local returns 'YYYY-MM-DDTHH:MM' — append seconds + Z for ISO 8601
     const toIso = (s: string) => s.length === 16 ? s + ':00.000Z' : s;
@@ -859,8 +757,6 @@ function LogShiftModal({ onClose, onSuccess }: LogShiftModalProps) {
     onClose();
   }
 
-  const errCls = 'border-red-400 focus:border-red-500 focus:ring-red-200';
-
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/20"
       onClick={(e) => e.target === e.currentTarget && onClose()}>
@@ -869,40 +765,27 @@ function LogShiftModal({ onClose, onSuccess }: LogShiftModalProps) {
           <h2 className="text-sm font-semibold text-fg">Log shift</h2>
           <button onClick={onClose} className="rounded p-1 text-fg-subtle hover:bg-surface-hover hover:text-fg-muted"><X className="h-4 w-4" /></button>
         </div>
-        <form onSubmit={handleSubmit} noValidate className="flex flex-col gap-4 p-5">
+        <form onSubmit={handleSubmit} className="flex flex-col gap-4 p-5">
           <div className="flex flex-col gap-1.5">
-            <label htmlFor="sh-type" className="text-xs font-medium text-fg-muted">Shift type <span className="text-red-400">*</span></label>
-            <select id="sh-type" value={form.shiftType} onChange={(e) => setForm(f => ({ ...f, shiftType: e.target.value as ShiftType }))} className={inputClass}>
+            <label className="text-xs font-medium text-fg-muted">Shift type *</label>
+            <select value={form.shiftType} onChange={(e) => setForm(f => ({ ...f, shiftType: e.target.value as ShiftType }))}
+              className={inputClass}>
               <option value="night">Night</option>
               <option value="on_call">On-call</option>
               <option value="weekend">Weekend</option>
             </select>
           </div>
           <div className="flex flex-col gap-1.5">
-            <label htmlFor="sh-start" className="text-xs font-medium text-fg-muted">Starts at <span className="text-red-400">*</span></label>
-            <input
-              id="sh-start" type="datetime-local" value={form.startsAt}
-              onChange={(e) => { setForm(f => ({ ...f, startsAt: e.target.value })); setFieldErrors(fe => ({ ...fe, startsAt: '', endsAt: '' })); }}
-              aria-invalid={!!fieldErrors.startsAt}
-              aria-describedby={fieldErrors.startsAt ? 'sh-start-err' : undefined}
-              className={[inputClass, fieldErrors.startsAt ? errCls : ''].filter(Boolean).join(' ')}
-            />
-            {fieldErrors.startsAt && <p id="sh-start-err" role="alert" className="text-xs text-red-500">{fieldErrors.startsAt}</p>}
+            <label className="text-xs font-medium text-fg-muted">Starts at *</label>
+            <input type="datetime-local" required value={form.startsAt} onChange={(e) => setForm(f => ({ ...f, startsAt: e.target.value }))} className={inputClass} />
           </div>
           <div className="flex flex-col gap-1.5">
-            <label htmlFor="sh-end" className="text-xs font-medium text-fg-muted">Ends at <span className="text-red-400">*</span></label>
-            <input
-              id="sh-end" type="datetime-local" value={form.endsAt}
-              onChange={(e) => { setForm(f => ({ ...f, endsAt: e.target.value })); setFieldErrors(fe => ({ ...fe, endsAt: '' })); }}
-              aria-invalid={!!fieldErrors.endsAt}
-              aria-describedby={fieldErrors.endsAt ? 'sh-end-err' : undefined}
-              className={[inputClass, fieldErrors.endsAt ? errCls : ''].filter(Boolean).join(' ')}
-            />
-            {fieldErrors.endsAt && <p id="sh-end-err" role="alert" className="text-xs text-red-500">{fieldErrors.endsAt}</p>}
+            <label className="text-xs font-medium text-fg-muted">Ends at *</label>
+            <input type="datetime-local" required value={form.endsAt} onChange={(e) => setForm(f => ({ ...f, endsAt: e.target.value }))} className={inputClass} />
           </div>
           <div className="flex flex-col gap-1.5">
-            <label htmlFor="sh-note" className="text-xs font-medium text-fg-muted">Note</label>
-            <textarea id="sh-note" value={form.note} onChange={(e) => setForm(f => ({ ...f, note: e.target.value }))}
+            <label className="text-xs font-medium text-fg-muted">Note</label>
+            <textarea value={form.note} onChange={(e) => setForm(f => ({ ...f, note: e.target.value }))}
               rows={2} placeholder="Optional notes…"
               className="w-full resize-none rounded-md border border-border bg-surface px-3 py-2 text-sm text-fg placeholder:text-fg-subtle focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/20" />
           </div>
@@ -1037,111 +920,15 @@ function ShiftsTab() {
   );
 }
 
-// ── Attendance history tab ────────────────────────────────────────────────────
-
-interface AttendanceLog {
-  id: string;
-  employeeId: string;
-  clockedInAt: string;
-  clockedOutAt: string | null;
-  durationMinutes: number | null;
-  isRemote: boolean;
-  notes: string | null;
-}
-
-const authHdrs = () => ({ Authorization: `Bearer ${getToken() ?? ''}` });
-
-async function fetchAttendanceHistory(): Promise<{ data: AttendanceLog[] }> {
-  const res = await fetch('/v1/workforce/attendance', { headers: authHdrs() });
-  if (!res.ok) throw new Error('Failed to load attendance history');
-  return res.json() as Promise<{ data: AttendanceLog[] }>;
-}
-
-function AttendanceHistoryTab() {
-  const { data, isLoading, isError } = useQuery({
-    queryKey: ['workforce', 'attendance', 'history'],
-    queryFn: fetchAttendanceHistory,
-  });
-
-  const logs = data?.data ?? [];
-
-  function fmtDuration(mins: number | null): string {
-    if (mins == null) return '—';
-    const h = Math.floor(mins / 60);
-    const m = mins % 60;
-    return h > 0 ? `${h}h ${m}m` : `${m}m`;
-  }
-
-  return (
-    <div className="overflow-hidden rounded-lg border border-border bg-surface">
-      <table className="w-full text-sm" aria-label="Attendance history">
-        <thead>
-          <tr className="border-b border-border bg-surface-muted">
-            <th className="px-4 py-2.5 text-left text-xs font-medium tracking-wide text-fg-muted">Clock in</th>
-            <th className="px-4 py-2.5 text-left text-xs font-medium tracking-wide text-fg-muted">Clock out</th>
-            <th className="px-4 py-2.5 text-left text-xs font-medium tracking-wide text-fg-muted">Duration</th>
-            <th className="px-4 py-2.5 text-left text-xs font-medium tracking-wide text-fg-muted">Mode</th>
-            <th className="px-4 py-2.5 text-left text-xs font-medium tracking-wide text-fg-muted">Notes</th>
-          </tr>
-        </thead>
-        <tbody className="divide-y divide-border">
-          {isLoading && (
-            <tr><td colSpan={5} className="px-4 py-8 text-center text-sm text-fg-subtle">Loading…</td></tr>
-          )}
-          {isError && (
-            <tr><td colSpan={5} className="px-4 py-8 text-center text-sm text-danger">Failed to load attendance history.</td></tr>
-          )}
-          {!isLoading && logs.length === 0 && (
-            <tr>
-              <td colSpan={5} className="px-4 py-12 text-center">
-                <div className="flex flex-col items-center gap-2">
-                  <History className="h-8 w-8 text-fg-subtle" strokeWidth={1.5} />
-                  <span className="text-sm text-fg-subtle">No attendance records yet</span>
-                  <span className="text-xs text-fg-subtle">Clock in using the widget above</span>
-                </div>
-              </td>
-            </tr>
-          )}
-          {logs.map((log) => (
-            <tr key={log.id} className="hover:bg-surface-hover">
-              <td className="px-4 py-3 tabular-nums text-fg">
-                {new Date(log.clockedInAt).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
-              </td>
-              <td className="px-4 py-3 tabular-nums text-fg-muted">
-                {log.clockedOutAt
-                  ? new Date(log.clockedOutAt).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })
-                  : <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 text-xs text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400">Active</span>}
-              </td>
-              <td className="px-4 py-3 tabular-nums text-fg-muted">{fmtDuration(log.durationMinutes)}</td>
-              <td className="px-4 py-3">
-                {log.isRemote
-                  ? <span className="inline-flex items-center gap-1 rounded-full bg-blue-50 px-2 py-0.5 text-xs text-blue-700 dark:bg-blue-900/30 dark:text-blue-400"><Wifi className="h-3 w-3" /> Remote</span>
-                  : <span className="inline-flex items-center gap-1 rounded-full bg-surface-muted px-2 py-0.5 text-xs text-fg-muted"><WifiOff className="h-3 w-3" /> On-site</span>}
-              </td>
-              <td className="px-4 py-3 max-w-xs truncate text-xs text-fg-subtle">{log.notes ?? '—'}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-      {logs.length > 0 && (
-        <div className="border-t border-border bg-surface-muted px-4 py-2.5 text-xs text-fg-subtle">
-          {logs.length} record{logs.length !== 1 ? 's' : ''}
-        </div>
-      )}
-    </div>
-  );
-}
-
 // ── Page ─────────────────────────────────────────────────────────────────────────────
 
-type WorkforceTab = 'timesheets' | 'leave' | 'overtime' | 'shifts' | 'attendance';
+type WorkforceTab = 'timesheets' | 'leave' | 'overtime' | 'shifts';
 
 const TABS: { value: WorkforceTab; label: string; icon: React.FC<{ className?: string }> }[] = [
   { value: 'timesheets', label: 'Timesheets', icon: (p) => <Clock {...p} /> },
   { value: 'leave', label: 'Leave', icon: (p) => <Calendar {...p} /> },
   { value: 'overtime', label: 'Overtime', icon: (p) => <Zap {...p} /> },
   { value: 'shifts', label: 'Shifts', icon: (p) => <Moon {...p} /> },
-  { value: 'attendance', label: 'Attendance', icon: (p) => <History {...p} /> },
 ];
 
 export function WorkforcePage() {
@@ -1149,17 +936,12 @@ export function WorkforcePage() {
 
   return (
     <div className="flex flex-col gap-5">
-      {/* Header + attendance clock */}
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-        <div>
-          <h1 className="text-lg font-semibold tracking-tight text-fg">Workforce</h1>
-          <p className="mt-0.5 text-sm text-fg-muted">
-            Manage timesheets, leave requests, overtime, and special shift logging.
-          </p>
-        </div>
-        <div className="w-full sm:w-64">
-          <AttendanceClock />
-        </div>
+      {/* Header */}
+      <div>
+        <h1 className="text-lg font-semibold tracking-tight text-fg">Workforce</h1>
+        <p className="mt-0.5 text-sm text-fg-muted">
+          Manage timesheets, leave requests, overtime, and special shift logging.
+        </p>
       </div>
 
       {/* Tab bar */}
@@ -1187,7 +969,6 @@ export function WorkforcePage() {
       {tab === 'leave' && <LeaveTab />}
       {tab === 'overtime' && <OvertimeTab />}
       {tab === 'shifts' && <ShiftsTab />}
-      {tab === 'attendance' && <AttendanceHistoryTab />}
     </div>
   );
 }

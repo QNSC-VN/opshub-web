@@ -42,6 +42,7 @@ const authMiddleware: Middleware = {
     const newToken = await attemptRefresh();
     if (!newToken) {
       useAuthStore.getState().clear();
+      window.location.replace('/login');
       return response;
     }
 
