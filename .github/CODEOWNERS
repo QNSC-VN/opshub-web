@@ -1,8 +1,8 @@
 # Default reviewers for all files
-*                                   @nghiavan0610
+*                                   @QNSC-VN
 
 # Auth and API client (generated types + auth store)
-src/shared/api/                     @nghiavan0610
+src/shared/api/                     @QNSC-VN
 
 # CI/CD workflows
-.github/workflows/                  @nghiavan0610
+.github/workflows/                  @QNSC-VN

@@ -50,7 +50,7 @@ jobs:
           ref: ${{ inputs.git_ref }}
           fetch-depth: 0
 
-      - uses: nghiavan0610/qncs-gitops/actions/setup-node-pnpm@${{ env.GITOPS_SHA }}
+      - uses: QNSC-VN/qncs-gitops/actions/setup-node-pnpm@${{ env.GITOPS_SHA }}
         with:
           node-version: ${{ env.NODE_VERSION }}
           pnpm-version: ${{ env.PNPM_VERSION }}
@@ -60,7 +60,7 @@ jobs:
         env:
           VITE_API_BASE_URL: ${{ vars.VITE_API_BASE_URL }}
 
-      - uses: nghiavan0610/qncs-gitops/actions/setup-aws-oidc@${{ env.GITOPS_SHA }}
+      - uses: QNSC-VN/qncs-gitops/actions/setup-aws-oidc@${{ env.GITOPS_SHA }}
         with:
           role-arn: arn:aws:iam::${{ secrets.AWS_ACCOUNT_ID }}:role/opshub-github-web-deploy-${{ inputs.environment }}
           region: ${{ env.AWS_REGION }}
