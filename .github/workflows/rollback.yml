@@ -29,9 +29,10 @@ permissions:
   contents: read
 
 env:
+  GITOPS_SHA: 947bc9bd8e130065082f9a2e15e4f61cfbb736ca
   NODE_VERSION: '22'
   PNPM_VERSION: '10.33.2'
-  AWS_REGION: ${{ secrets.AWS_REGION }}
+  AWS_REGION: ${{ vars.AWS_REGION }}
 
 jobs:
   rollback:
@@ -44,12 +45,12 @@ jobs:
       contents: read
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683   # v4.2.2
         with:
           ref: ${{ inputs.git_ref }}
           fetch-depth: 0
 
-      - uses: nghiavan0610/qncs-gitops/actions/setup-node-pnpm@947bc9bd8e130065082f9a2e15e4f61cfbb736ca
+      - uses: nghiavan0610/qncs-gitops/actions/setup-node-pnpm@${{ env.GITOPS_SHA }}
         with:
           node-version: ${{ env.NODE_VERSION }}
           pnpm-version: ${{ env.PNPM_VERSION }}
@@ -59,10 +60,10 @@ jobs:
         env:
           VITE_API_BASE_URL: ${{ vars.VITE_API_BASE_URL }}
 
-      - uses: aws-actions/configure-aws-credentials@v4
+      - uses: nghiavan0610/qncs-gitops/actions/setup-aws-oidc@${{ env.GITOPS_SHA }}
         with:
-          role-to-assume: arn:aws:iam::${{ secrets.AWS_ACCOUNT_ID }}:role/opshub-github-web-deploy-${{ inputs.environment }}
-          aws-region: ${{ env.AWS_REGION }}
+          role-arn: arn:aws:iam::${{ secrets.AWS_ACCOUNT_ID }}:role/opshub-github-web-deploy-${{ inputs.environment }}
+          region: ${{ env.AWS_REGION }}
 
       - name: Sync rollback build to S3
         run: |
