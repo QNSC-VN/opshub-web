@@ -14,7 +14,17 @@
  */
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
-import { User, ShieldCheck, Mail, Briefcase, Building2, ExternalLink, CheckCircle2, Pencil, X } from 'lucide-react';
+import {
+  User,
+  ShieldCheck,
+  Mail,
+  Briefcase,
+  Building2,
+  ExternalLink,
+  CheckCircle2,
+  Pencil,
+  X,
+} from 'lucide-react';
 import { toast } from 'sonner';
 import { api } from '@/shared/api/client';
 import type { components } from '@/shared/api/generated/api';
@@ -27,7 +37,15 @@ type EmployeeDto = components['schemas']['EmployeeResponseDto'];
 const inputClass =
   'h-9 w-full rounded-lg border border-border bg-surface px-3 text-sm text-fg placeholder:text-fg-subtle focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/20 disabled:bg-surface-muted disabled:text-fg-subtle';
 
-function SectionCard({ title, subtitle, children }: { title: string; subtitle?: string; children: React.ReactNode }) {
+function SectionCard({
+  title,
+  subtitle,
+  children,
+}: {
+  title: string;
+  subtitle?: string;
+  children: React.ReactNode;
+}) {
   return (
     <div className="rounded-xl border border-border bg-surface">
       <div className="border-b border-border px-6 py-4">
@@ -39,7 +57,12 @@ function SectionCard({ title, subtitle, children }: { title: string; subtitle?: 
   );
 }
 
-function FieldRow({ label, icon: Icon, value, placeholder }: {
+function FieldRow({
+  label,
+  icon: Icon,
+  value,
+  placeholder,
+}: {
   label: string;
   icon: React.ElementType;
   value: string;
@@ -77,7 +100,9 @@ function AvatarInitials({ name, email }: { name: string; email: string }) {
   const idx = [...email].reduce((acc, c) => acc + c.charCodeAt(0), 0) % colors.length;
 
   return (
-    <div className={`flex h-16 w-16 shrink-0 items-center justify-center rounded-full ${colors[idx]} text-xl font-semibold text-white select-none`}>
+    <div
+      className={`flex h-16 w-16 shrink-0 items-center justify-center rounded-full ${colors[idx]} text-xl font-semibold text-white select-none`}
+    >
       {initials || '?'}
     </div>
   );
@@ -100,8 +125,12 @@ function EditProfileModal({ employee, onClose, onSuccess }: EditProfileModalProp
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
-    if (!displayName.trim()) { setErr('Display name is required.'); return; }
-    setLoading(true); setErr('');
+    if (!displayName.trim()) {
+      setErr('Display name is required.');
+      return;
+    }
+    setLoading(true);
+    setErr('');
 
     const { data, error } = await api.PATCH('/v1/employees/{id}', {
       params: { path: { id: employee.id } },
@@ -113,7 +142,10 @@ function EditProfileModal({ employee, onClose, onSuccess }: EditProfileModalProp
     });
 
     setLoading(false);
-    if (error || !data) { setErr('Failed to update profile. Please try again.'); return; }
+    if (error || !data) {
+      setErr('Failed to update profile. Please try again.');
+      return;
+    }
     toast.success('Profile updated');
     onSuccess(data as EmployeeDto);
     onClose();
@@ -133,7 +165,9 @@ function EditProfileModal({ employee, onClose, onSuccess }: EditProfileModalProp
         </div>
         <form onSubmit={submit} className="flex flex-col gap-4 px-6 py-5">
           <div className="flex flex-col gap-1.5">
-            <label className="text-xs font-medium text-fg-muted">Display name <span className="text-danger">*</span></label>
+            <label className="text-xs font-medium text-fg-muted">
+              Display name <span className="text-danger">*</span>
+            </label>
             <input
               className={inputClass}
               value={displayName}
@@ -213,26 +247,28 @@ function useEmployee(id: string | undefined) {
 // ── Role badge ────────────────────────────────────────────────────────────────
 
 const ROLE_LABELS: Record<string, string> = {
-  'it-admin':   'IT Admin',
-  'hr':         'HR',
-  'manager':    'Manager',
-  'security':   'Security',
-  'employee':   'Employee',
-  'finance':    'Finance',
+  'it-admin': 'IT Admin',
+  hr: 'HR',
+  manager: 'Manager',
+  security: 'Security',
+  employee: 'Employee',
+  finance: 'Finance',
 };
 
 function RoleBadge({ role }: { role: string }) {
   const label = ROLE_LABELS[role] ?? role;
   const colors: Record<string, string> = {
     'it-admin': 'bg-accent-muted text-accent',
-    'hr': 'bg-violet-bg text-violet-fg',
-    'manager': 'bg-warning-bg text-warning',
-    'security': 'bg-danger-bg text-danger',
-    'employee': 'bg-surface-muted text-fg-muted',
-    'finance': 'bg-success-bg text-success',
+    hr: 'bg-violet-bg text-violet-fg',
+    manager: 'bg-warning-bg text-warning',
+    security: 'bg-danger-bg text-danger',
+    employee: 'bg-surface-muted text-fg-muted',
+    finance: 'bg-success-bg text-success',
   };
   return (
-    <span className={`inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-xs font-medium ${colors[role] ?? 'bg-surface-muted text-fg-muted'}`}>
+    <span
+      className={`inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-xs font-medium ${colors[role] ?? 'bg-surface-muted text-fg-muted'}`}
+    >
       <ShieldCheck className="h-3 w-3" />
       {label}
     </span>
@@ -266,7 +302,7 @@ export function ProfilePage() {
 
   if (isLoading) {
     return (
-      <div className="flex flex-col gap-6 max-w-2xl">
+      <div className="mx-auto flex w-full max-w-2xl flex-col gap-6">
         <div className="h-8 w-40 animate-pulse rounded-lg bg-surface-muted" />
         <div className="h-40 animate-pulse rounded-xl bg-surface-muted" />
       </div>
@@ -291,29 +327,41 @@ export function ProfilePage() {
         />
       )}
 
-      <div className="flex flex-col gap-6 max-w-2xl">
+      <div className="mx-auto flex w-full max-w-2xl flex-col gap-6">
         {/* Page header */}
         <div>
           <h1 className="text-lg font-semibold tracking-tight text-fg">My Profile</h1>
-          <p className="mt-0.5 text-sm text-fg-muted">View and update your personal details and account settings.</p>
+          <p className="mt-0.5 text-sm text-fg-muted">
+            View and update your personal details and account settings.
+          </p>
         </div>
 
         {/* Identity card */}
-        <div data-testid="identity-card" className="rounded-xl border border-border bg-surface px-6 py-5">
+        <div
+          data-testid="identity-card"
+          className="rounded-xl border border-border bg-surface px-6 py-5"
+        >
           <div className="flex items-start gap-4">
             <AvatarInitials name={me.name} email={me.email} />
             <div className="flex-1 min-w-0">
               <div className="flex items-start justify-between gap-3">
                 <div>
-                  <p className="text-base font-semibold text-fg truncate">{displayEmployee?.displayName ?? me.name}</p>
+                  <p className="text-base font-semibold text-fg truncate">
+                    {displayEmployee?.displayName ?? me.name}
+                  </p>
                   <p className="text-sm text-fg-muted truncate">{me.email}</p>
                   {displayEmployee?.jobTitle && (
-                    <p className="mt-0.5 text-xs text-fg-subtle">{displayEmployee.jobTitle}{displayEmployee.department ? ` · ${displayEmployee.department}` : ''}</p>
+                    <p className="mt-0.5 text-xs text-fg-subtle">
+                      {displayEmployee.jobTitle}
+                      {displayEmployee.department ? ` · ${displayEmployee.department}` : ''}
+                    </p>
                   )}
                 </div>
                 <div className="flex items-center gap-2 shrink-0">
                   {displayEmployee?.status && (
-                    <span className={`inline-flex rounded-md px-2 py-0.5 text-xs font-medium capitalize ${statusColors[displayEmployee.status] ?? 'bg-surface-muted text-fg-muted'}`}>
+                    <span
+                      className={`inline-flex rounded-md px-2 py-0.5 text-xs font-medium capitalize ${statusColors[displayEmployee.status] ?? 'bg-surface-muted text-fg-muted'}`}
+                    >
                       {displayEmployee.status.replace('_', ' ')}
                     </span>
                   )}
@@ -328,7 +376,9 @@ export function ProfilePage() {
               </div>
               {me.roles.length > 0 && (
                 <div className="mt-3 flex flex-wrap gap-1.5">
-                  {me.roles.map((r) => <RoleBadge key={r} role={r} />)}
+                  {me.roles.map((r) => (
+                    <RoleBadge key={r} role={r} />
+                  ))}
                 </div>
               )}
             </div>
@@ -344,8 +394,18 @@ export function ProfilePage() {
             <div>
               <FieldRow label="Email" icon={Mail} value={displayEmployee.email} />
               <FieldRow label="Display name" icon={User} value={displayEmployee.displayName} />
-              <FieldRow label="Job title" icon={Briefcase} value={displayEmployee.jobTitle ?? ''} placeholder="Not set" />
-              <FieldRow label="Department" icon={Building2} value={displayEmployee.department ?? ''} placeholder="Not set" />
+              <FieldRow
+                label="Job title"
+                icon={Briefcase}
+                value={displayEmployee.jobTitle ?? ''}
+                placeholder="Not set"
+              />
+              <FieldRow
+                label="Department"
+                icon={Building2}
+                value={displayEmployee.department ?? ''}
+                placeholder="Not set"
+              />
             </div>
           </SectionCard>
         )}
@@ -360,8 +420,9 @@ export function ProfilePage() {
             <div className="flex-1">
               <p className="text-sm font-medium text-fg">Single Sign-On via Microsoft Entra ID</p>
               <p className="mt-0.5 text-xs text-fg-muted">
-                Your password and MFA settings are managed through your organisation's Microsoft account.
-                To change your password or manage security options, visit the Microsoft My Account portal.
+                Your password and MFA settings are managed through your organisation's Microsoft
+                account. To change your password or manage security options, visit the Microsoft My
+                Account portal.
               </p>
               <a
                 href="https://myaccount.microsoft.com/security-info"
@@ -389,7 +450,9 @@ export function ProfilePage() {
                 label="Member since"
                 icon={CheckCircle2}
                 value={new Date(displayEmployee.createdAt).toLocaleDateString('en-US', {
-                  month: 'long', day: 'numeric', year: 'numeric',
+                  month: 'long',
+                  day: 'numeric',
+                  year: 'numeric',
                 })}
               />
             )}

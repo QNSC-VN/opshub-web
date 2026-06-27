@@ -1,127 +1,46 @@
 /**
- * usePermissions — role-to-capability mapping for UI gating.
+ * usePermissions — UI capability gating driven by the backend.
  *
  * Design:
- *  - Source of truth is the backend (PolicyGuard).
- *  - This hook provides frontend visibility gates ONLY — it hides UI elements
- *    that the user cannot use. It is NOT a security boundary.
- *  - Capabilities are derived from the roles array in the /me response, cached
- *    in TanStack Query. No extra API call is needed.
- *
- * Role hierarchy (additive):
- *  employee < manager < it-admin | hr | security | helpdesk | auditor
+ *  - The backend (PolicyGuard + AuthzService) is the single source of truth for
+ *    authorization. `/me` returns the user's *effective permission keys* resolved
+ *    from their DB role assignments, including the `'*'` super-admin wildcard.
+ *  - This hook is a thin reader over that list. It NEVER re-derives permissions
+ *    from role names — that previously caused FE/BE drift (e.g. the `admin` role
+ *    was unknown to the FE and its entire menu was hidden).
+ *  - It is a UI convenience only, NOT a security boundary; every gated action is
+ *    independently enforced server-side.
  *
  * Usage:
  *   const { can, hasRole, primaryRole } = usePermissions();
- *   if (can('asset.manage')) { ... }
+ *   if (can('asset.read')) { ... }   // permission keys match the backend exactly
  *   if (hasRole('it-admin'))  { ... }
  */
 import { useMemo } from 'react';
 import { useCurrentUser } from './use-current-user';
 
-// ── Capability catalogue ──────────────────────────────────────────────────────
+// ── Wildcard ──────────────────────────────────────────────────────────────────
 
-/**
- * Map role → set of UI capability keys.
- * Kept small and explicit — YAGNI, add only when a real gate is needed.
- */
-const ROLE_CAPS: Record<string, readonly string[]> = {
-  'employee': [
-    'requests.submit',
-    'requests.view.own',
-    'workforce.self',
-    'assets.view.own',
-    'profile.view',
-  ],
-  'manager': [
-    'requests.submit',
-    'requests.view.own',
-    'requests.approve',
-    'workforce.self',
-    'workforce.team',
-    'workforce.approve',
-    'assets.view.own',
-    'people.view',
-    'reports.view',
-    'profile.view',
-  ],
-  'helpdesk': [
-    'requests.submit',
-    'requests.view',
-    'requests.manage',
-    'assets.view',
-    'people.view',
-    'profile.view',
-  ],
-  'hr': [
-    'requests.submit',
-    'requests.view.own',
-    'workforce.manage',
-    'workforce.approve',
-    'people.view',
-    'reports.view',
-    'profile.view',
-  ],
-  'security': [
-    'requests.view',
-    'compliance.view',
-    'access.view',
-    'reports.view',
-    'audit.view',
-    'people.view',
-    'security.view',
-    'profile.view',
-  ],
-  'auditor': [
-    'reports.view',
-    'audit.view',
-    'compliance.view',
-    'access.view',
-    'people.view',
-    'assets.view',
-    'profile.view',
-  ],
-  'it-admin': [
-    'requests.submit',
-    'requests.view',
-    'requests.approve',
-    'requests.manage',
-    'asset.manage',
-    'assets.view',
-    'access.view',
-    'access.manage',
-    'compliance.view',
-    'compliance.manage',
-    'security.view',
-    'people.view',
-    'people.manage',
-    'workforce.view',
-    'workforce.self',
-    'reports.view',
-    'audit.view',
-    'settings.view',
-    'settings.manage',
-    'rbac.manage',
-    'webhooks.manage',
-    'profile.view',
-  ],
-};
+/** Super-admin permission — grants every capability (mirrors backend WILDCARD_PERMISSION). */
+const WILDCARD = '*';
 
-// ── Role priority (for primaryRole detection) ─────────────────────────────────
+// ── Role priority (for primaryRole / persona-aware UI) ─────────────────────────
 
 const ROLE_PRIORITY: Record<string, number> = {
+  admin: 11,
   'it-admin': 10,
-  'security':  9,
-  'hr':        8,
-  'helpdesk':  7,
-  'auditor':   6,
-  'manager':   5,
-  'employee':  1,
+  security: 9,
+  hr: 8,
+  helpdesk: 7,
+  auditor: 6,
+  manager: 5,
+  employee: 1,
 };
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
 export type AppRole =
+  | 'admin'
   | 'it-admin'
   | 'security'
   | 'hr'
@@ -131,8 +50,11 @@ export type AppRole =
   | 'employee';
 
 export interface PermissionHelpers {
-  /** Check a UI capability key. Returns false while user data is loading. */
-  can: (capability: string) => boolean;
+  /**
+   * Check a backend permission key. Returns true when the user holds the
+   * wildcard `'*'` or the exact key. Returns false while /me is loading.
+   */
+  can: (permission: string) => boolean;
   /** Check if the user has a specific role. */
   hasRole: (role: AppRole | string) => boolean;
   /**
@@ -142,6 +64,8 @@ export interface PermissionHelpers {
   primaryRole: AppRole;
   /** All roles the user holds. */
   roles: string[];
+  /** All effective permission keys the user holds (may contain `'*'`). */
+  permissions: string[];
   /** True while /me is still loading. */
   isLoading: boolean;
 }
@@ -153,27 +77,22 @@ export function usePermissions(): PermissionHelpers {
 
   return useMemo<PermissionHelpers>(() => {
     const roles: string[] = (me as { roles?: string[] })?.roles ?? [];
-
-    // Flatten all capabilities from all held roles
-    const caps = new Set<string>();
-    for (const role of roles) {
-      for (const cap of ROLE_CAPS[role] ?? []) {
-        caps.add(cap);
-      }
-    }
+    const permissions: string[] = (me as { permissions?: string[] })?.permissions ?? [];
+    const permSet = new Set(permissions);
+    const isSuperAdmin = permSet.has(WILDCARD);
 
     // Primary role = highest priority role the user holds
-    const primaryRole = (
-      roles.reduce<string>((best, r) => {
-        return (ROLE_PRIORITY[r] ?? 0) > (ROLE_PRIORITY[best] ?? 0) ? r : best;
-      }, 'employee')
+    const primaryRole = roles.reduce<string>(
+      (best, r) => ((ROLE_PRIORITY[r] ?? 0) > (ROLE_PRIORITY[best] ?? 0) ? r : best),
+      'employee',
     ) as AppRole;
 
     return {
-      can:     (cap) => caps.has(cap),
+      can: (perm) => isSuperAdmin || permSet.has(perm),
       hasRole: (role) => roles.includes(role),
       primaryRole,
       roles,
+      permissions,
       isLoading,
     };
   }, [me, isLoading]);

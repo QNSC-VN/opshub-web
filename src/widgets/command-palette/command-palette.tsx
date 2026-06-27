@@ -13,14 +13,7 @@
  *  - No external cmdk library — built on native inputs for bundle size.
  *  - Focus trap + Escape handled internally.
  */
-import {
-  useEffect,
-  useRef,
-  useState,
-  useMemo,
-  useCallback,
-  type ReactNode,
-} from 'react';
+import { useEffect, useRef, useState, useMemo, useCallback, type ReactNode } from 'react';
 import { useNavigate } from '@tanstack/react-router';
 import { useQuery } from '@tanstack/react-query';
 import {
@@ -62,23 +55,77 @@ interface Command {
 
 function useNavCommands(can: (cap: string) => boolean): Command[] {
   return useMemo(() => {
-    const nav: Array<{ label: string; href: string; icon: ReactNode; cap?: string; kw?: string[] }> = [
-      { label: 'Overview',        href: '/',                     icon: <LayoutDashboard className="h-4 w-4" strokeWidth={1.75} />, kw: ['home', 'dashboard'] },
-      { label: 'People',          href: '/people',               icon: <Users           className="h-4 w-4" strokeWidth={1.75} />, cap: 'people.view' },
-      { label: 'Assets',          href: '/assets',               icon: <Laptop          className="h-4 w-4" strokeWidth={1.75} />, cap: 'assets.view' },
-      { label: 'Access Requests', href: '/access',               icon: <ShieldCheck     className="h-4 w-4" strokeWidth={1.75} />, cap: 'access.view', kw: ['pim', 'admin', 'temp'] },
-      { label: 'Compliance',      href: '/compliance',           icon: <ScanLine        className="h-4 w-4" strokeWidth={1.75} />, cap: 'compliance.view', kw: ['security', 'findings', 'software'] },
-      { label: 'Inbox',           href: '/requests',             icon: <Inbox           className="h-4 w-4" strokeWidth={1.75} />, cap: 'requests.view', kw: ['approvals', 'queue', 'pending'] },
-      { label: 'Workforce',       href: '/workforce',            icon: <CalendarClock   className="h-4 w-4" strokeWidth={1.75} />, kw: ['leave', 'ot', 'overtime', 'timesheet'] },
-      { label: 'Reports',         href: '/reports',              icon: <BarChart2       className="h-4 w-4" strokeWidth={1.75} />, cap: 'reports.view', kw: ['analytics', 'charts'] },
-      { label: 'Settings',        href: '/settings/audit-logs',  icon: <Settings        className="h-4 w-4" strokeWidth={1.75} />, cap: 'settings.view' },
+    const nav: Array<{
+      label: string;
+      href: string;
+      icon: ReactNode;
+      cap?: string;
+      kw?: string[];
+    }> = [
+      {
+        label: 'Overview',
+        href: '/',
+        icon: <LayoutDashboard className="h-4 w-4" strokeWidth={1.75} />,
+        kw: ['home', 'dashboard'],
+      },
+      {
+        label: 'People',
+        href: '/people',
+        icon: <Users className="h-4 w-4" strokeWidth={1.75} />,
+        cap: 'employee.read',
+      },
+      {
+        label: 'Assets',
+        href: '/assets',
+        icon: <Laptop className="h-4 w-4" strokeWidth={1.75} />,
+        cap: 'asset.read',
+      },
+      {
+        label: 'Access Requests',
+        href: '/access',
+        icon: <ShieldCheck className="h-4 w-4" strokeWidth={1.75} />,
+        cap: 'access_request.read',
+        kw: ['pim', 'admin', 'temp'],
+      },
+      {
+        label: 'Compliance',
+        href: '/compliance',
+        icon: <ScanLine className="h-4 w-4" strokeWidth={1.75} />,
+        cap: 'compliance.read',
+        kw: ['security', 'findings', 'software'],
+      },
+      {
+        label: 'Inbox',
+        href: '/requests',
+        icon: <Inbox className="h-4 w-4" strokeWidth={1.75} />,
+        kw: ['approvals', 'queue', 'pending'],
+      },
+      {
+        label: 'Workforce',
+        href: '/workforce',
+        icon: <CalendarClock className="h-4 w-4" strokeWidth={1.75} />,
+        kw: ['leave', 'ot', 'overtime', 'timesheet'],
+      },
+      {
+        label: 'Reports',
+        href: '/reports',
+        icon: <BarChart2 className="h-4 w-4" strokeWidth={1.75} />,
+        cap: 'reports.read',
+        kw: ['analytics', 'charts'],
+      },
+      {
+        label: 'Audit Logs',
+        href: '/settings/audit-logs',
+        icon: <Settings className="h-4 w-4" strokeWidth={1.75} />,
+        cap: 'audit.read',
+      },
     ];
 
     return nav
       .filter(({ cap }) => !cap || can(cap))
       .map(({ label, href, icon, kw }) => ({
-        id:       `nav:${href}`,
-        group:    'Navigate',
+        id: `nav:${href}`,
+        group: 'Navigate',
         label,
         href,
         icon,
@@ -121,12 +168,12 @@ function useLivePeopleSearch(query: string, enabled: boolean) {
         params: { query: { search: query, limit: 5 } },
       });
       return (data?.data ?? []).map((e: EmployeeResponse) => ({
-        id:    `person:${e.id}`,
+        id: `person:${e.id}`,
         group: 'People',
         label: e.displayName,
         description: e.jobTitle ?? e.department ?? e.email,
-        icon:  <Users className="h-4 w-4" strokeWidth={1.75} />,
-        href:  `/people`,
+        icon: <Users className="h-4 w-4" strokeWidth={1.75} />,
+        href: `/people`,
       }));
     },
     enabled: enabled && query.length >= 2,
@@ -143,12 +190,12 @@ function useLiveAssetSearch(query: string, enabled: boolean) {
         params: { query: { search: query, limit: 5 } },
       });
       return (data?.data ?? []).map((a: AssetResponse) => ({
-        id:    `asset:${a.id}`,
+        id: `asset:${a.id}`,
         group: 'Assets',
         label: a.assetTag,
         description: [a.type, a.model].filter(Boolean).join(' · '),
-        icon:  <Laptop className="h-4 w-4" strokeWidth={1.75} />,
-        href:  `/assets`,
+        icon: <Laptop className="h-4 w-4" strokeWidth={1.75} />,
+        href: `/assets`,
       }));
     },
     enabled: enabled && query.length >= 2,
@@ -186,9 +233,7 @@ function CmdItem({ cmd, active, onHover, onSelect }: CmdItemProps) {
           <span className="block truncate text-xs text-fg-subtle">{cmd.description}</span>
         )}
       </span>
-      {active && (
-        <ArrowRight className="h-3.5 w-3.5 shrink-0 text-accent" strokeWidth={2} />
-      )}
+      {active && <ArrowRight className="h-3.5 w-3.5 shrink-0 text-accent" strokeWidth={2} />}
     </li>
   );
 }
@@ -200,10 +245,10 @@ export function CommandPalette() {
   const navigate = useNavigate();
   const { can } = usePermissions();
 
-  const [query, setQuery]     = useState('');
+  const [query, setQuery] = useState('');
   const [activeIdx, setActive] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
-  const listRef  = useRef<HTMLUListElement>(null);
+  const listRef = useRef<HTMLUListElement>(null);
 
   // Reset transient UI state and focus the input each time the palette opens.
   // Deferred to a macrotask so the resets are not synchronous within the effect
@@ -220,7 +265,7 @@ export function CommandPalette() {
 
   const navCommands = useNavCommands(can);
   const { data: peopleResults = [] } = useLivePeopleSearch(query, open);
-  const { data: assetResults  = [] } = useLiveAssetSearch(query, open);
+  const { data: assetResults = [] } = useLiveAssetSearch(query, open);
 
   // Filter static commands against query; merge with live results
   const allCommands = useMemo<Command[]>(() => {
@@ -312,7 +357,10 @@ export function CommandPalette() {
             type="text"
             placeholder="Search pages, people, assets…"
             value={query}
-            onChange={(e) => { setQuery(e.target.value); setActive(0); }}
+            onChange={(e) => {
+              setQuery(e.target.value);
+              setActive(0);
+            }}
             aria-autocomplete="list"
             aria-controls="cmd-results"
             className="flex-1 bg-transparent text-sm text-fg placeholder:text-fg-subtle focus:outline-none"
@@ -373,12 +421,15 @@ export function CommandPalette() {
         {/* Footer hint */}
         <div className="flex items-center justify-between border-t border-border px-4 py-2 text-[10px] text-fg-subtle">
           <span>
-            <kbd className="rounded border border-border bg-surface-muted px-1 py-0.5">↑↓</kbd> navigate
+            <kbd className="rounded border border-border bg-surface-muted px-1 py-0.5">↑↓</kbd>{' '}
+            navigate
             {' · '}
-            <kbd className="rounded border border-border bg-surface-muted px-1 py-0.5">↵</kbd> select
+            <kbd className="rounded border border-border bg-surface-muted px-1 py-0.5">↵</kbd>{' '}
+            select
           </span>
           <span>
-            <kbd className="rounded border border-border bg-surface-muted px-1 py-0.5">⌘K</kbd> to open
+            <kbd className="rounded border border-border bg-surface-muted px-1 py-0.5">⌘K</kbd> to
+            open
           </span>
         </div>
       </div>

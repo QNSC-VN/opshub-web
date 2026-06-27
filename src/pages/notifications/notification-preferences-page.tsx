@@ -42,44 +42,44 @@ const EVENT_GROUPS: EventGroup[] = [
   {
     group: 'Requests',
     events: [
-      { type: 'request.approved',     label: 'Request approved' },
-      { type: 'request.rejected',     label: 'Request rejected' },
-      { type: 'request.cancelled',    label: 'Request cancelled' },
-      { type: 'request.comment_added',label: 'Comment added on request' },
+      { type: 'request.approved', label: 'Request approved' },
+      { type: 'request.rejected', label: 'Request rejected' },
+      { type: 'request.cancelled', label: 'Request cancelled' },
+      { type: 'request.comment_added', label: 'Comment added on request' },
     ],
   },
   {
     group: 'Access',
     events: [
       { type: 'access_request.submitted', label: 'Access request submitted' },
-      { type: 'access_request.approved',  label: 'Access request approved' },
-      { type: 'access_request.rejected',  label: 'Access request rejected' },
-      { type: 'access_grant.revoked',     label: 'Access grant revoked' },
+      { type: 'access_request.approved', label: 'Access request approved' },
+      { type: 'access_request.rejected', label: 'Access request rejected' },
+      { type: 'access_grant.revoked', label: 'Access grant revoked' },
     ],
   },
   {
     group: 'Assets',
     events: [
-      { type: 'asset.assigned',   label: 'Asset assigned to you' },
+      { type: 'asset.assigned', label: 'Asset assigned to you' },
       { type: 'asset.unassigned', label: 'Asset unassigned from you' },
-      { type: 'asset.retired',    label: 'Asset retired' },
+      { type: 'asset.retired', label: 'Asset retired' },
     ],
   },
   {
     group: 'Compliance',
     events: [
       { type: 'compliance.finding_acknowledged', label: 'Finding acknowledged' },
-      { type: 'compliance.finding_resolved',     label: 'Finding resolved' },
-      { type: 'compliance.software_added',       label: 'Software added' },
+      { type: 'compliance.finding_resolved', label: 'Finding resolved' },
+      { type: 'compliance.software_added', label: 'Software added' },
     ],
   },
   {
     group: 'Workforce',
     events: [
-      { type: 'workforce.leave_requested',       label: 'Leave requested' },
-      { type: 'workforce.leave_cancelled',       label: 'Leave cancelled' },
-      { type: 'workforce.overtime_logged',       label: 'Overtime logged' },
-      { type: 'workforce.onboarding_submitted',  label: 'Onboarding submitted' },
+      { type: 'workforce.leave_requested', label: 'Leave requested' },
+      { type: 'workforce.leave_cancelled', label: 'Leave cancelled' },
+      { type: 'workforce.overtime_logged', label: 'Overtime logged' },
+      { type: 'workforce.onboarding_submitted', label: 'Onboarding submitted' },
       { type: 'workforce.offboarding_submitted', label: 'Offboarding submitted' },
     ],
   },
@@ -162,11 +162,7 @@ export function NotificationPreferencesPage() {
 
   const invalidate = () => qc.invalidateQueries({ queryKey: ['notification-preferences'] });
 
-  async function handleToggle(
-    type: string,
-    channel: 'inApp' | 'email',
-    newValue: boolean,
-  ) {
+  async function handleToggle(type: string, channel: 'inApp' | 'email', newValue: boolean) {
     if (pending.has(`${type}-${channel}`)) return;
 
     // Resolve current values
@@ -179,7 +175,10 @@ export function NotificationPreferencesPage() {
     // Optimistically update query cache
     qc.setQueryData<PreferenceDto[]>(['notification-preferences'], (old = []) => {
       const filtered = old.filter((p) => p.type !== type);
-      return [...filtered, { type, inApp: nextInApp, email: nextEmail, updatedAt: new Date().toISOString() }];
+      return [
+        ...filtered,
+        { type, inApp: nextInApp, email: nextEmail, updatedAt: new Date().toISOString() },
+      ];
     });
 
     const { error } = await api.PUT('/v1/notifications/preferences/{type}', {
@@ -187,7 +186,11 @@ export function NotificationPreferencesPage() {
       body: { inApp: nextInApp, email: nextEmail },
     });
 
-    setPending((s) => { const next = new Set(s); next.delete(`${type}-${channel}`); return next; });
+    setPending((s) => {
+      const next = new Set(s);
+      next.delete(`${type}-${channel}`);
+      return next;
+    });
 
     if (error) {
       toast.error('Failed to save preference');
@@ -199,7 +202,10 @@ export function NotificationPreferencesPage() {
     const { error } = await api.DELETE('/v1/notifications/preferences/{type}', {
       params: { path: { type } },
     });
-    if (error) { toast.error('Failed to reset preference'); return; }
+    if (error) {
+      toast.error('Failed to reset preference');
+      return;
+    }
     toast.success('Reset to default');
     invalidate();
   }
@@ -212,7 +218,10 @@ export function NotificationPreferencesPage() {
     // Optimistically
     qc.setQueryData<PreferenceDto[]>(['notification-preferences'], (old = []) => {
       const filtered = old.filter((p) => p.type !== '*');
-      return [...filtered, { type: '*', inApp: nextInApp, email: nextEmail, updatedAt: new Date().toISOString() }];
+      return [
+        ...filtered,
+        { type: '*', inApp: nextInApp, email: nextEmail, updatedAt: new Date().toISOString() },
+      ];
     });
 
     const { error } = await api.PUT('/v1/notifications/preferences/{type}', {
@@ -230,18 +239,21 @@ export function NotificationPreferencesPage() {
     const { error } = await api.DELETE('/v1/notifications/preferences/{type}', {
       params: { path: { type: '*' } },
     });
-    if (error) { toast.error('Failed to reset'); return; }
+    if (error) {
+      toast.error('Failed to reset');
+      return;
+    }
     invalidate();
   }
 
   return (
-    <div className="flex flex-col gap-6 max-w-3xl">
+    <div className="mx-auto flex w-full max-w-3xl flex-col gap-6">
       {/* Header */}
       <div>
         <h1 className="text-lg font-semibold tracking-tight text-fg">Notification Preferences</h1>
         <p className="mt-0.5 text-sm text-fg-muted">
-          Choose how you receive notifications for each event type.
-          Defaults are both in-app and email enabled.
+          Choose how you receive notifications for each event type. Defaults are both in-app and
+          email enabled.
         </p>
       </div>
 
@@ -266,8 +278,8 @@ export function NotificationPreferencesPage() {
                   <p className="text-sm font-semibold text-fg">Global override</p>
                 </div>
                 <p className="mt-0.5 text-xs text-fg-muted">
-                  Disabling a channel here overrides all per-event settings below.
-                  Use this as a master mute switch.
+                  Disabling a channel here overrides all per-event settings below. Use this as a
+                  master mute switch.
                 </p>
               </div>
               <div className="flex items-center gap-6 shrink-0 pt-0.5">
@@ -304,10 +316,15 @@ export function NotificationPreferencesPage() {
 
           {/* Per-event groups */}
           {EVENT_GROUPS.map((grp) => (
-            <div key={grp.group} className="rounded-xl border border-border bg-surface overflow-hidden">
+            <div
+              key={grp.group}
+              className="rounded-xl border border-border bg-surface overflow-hidden"
+            >
               {/* Group header */}
               <div className="grid grid-cols-[1fr_80px_80px_36px] items-center gap-2 border-b border-border bg-surface-muted px-5 py-2.5">
-                <p className="text-xs font-semibold uppercase tracking-wider text-fg-muted">{grp.group}</p>
+                <p className="text-xs font-semibold uppercase tracking-wider text-fg-muted">
+                  {grp.group}
+                </p>
                 <div className="flex items-center justify-center gap-1">
                   <Bell className="h-3.5 w-3.5 text-fg-subtle" strokeWidth={1.75} />
                   <span className="text-[10px] text-fg-subtle">In-app</span>

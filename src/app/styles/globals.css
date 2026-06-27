@@ -19,14 +19,14 @@
   --bg-surface-muted: #fafafa; /* table headers, filter rails, footers */
   --bg-surface-hover: #f4f4f5; /* row / list hover */
 
-  /* sidebar (intentionally dark in light mode — classic enterprise shell) */
-  --bg-sidebar: #09090b;
-  --bg-sidebar-hover: #18181b;
-  --bg-sidebar-active: #27272a;
-  --border-sidebar: #27272a;
-  --text-sidebar: #a1a1aa;
-  --text-sidebar-active: #ffffff;
-  --text-sidebar-label: #52525b;
+  /* sidebar — follows the theme: light rail in light mode */
+  --bg-sidebar: #fafafa;
+  --bg-sidebar-hover: #f0f0f1;
+  --bg-sidebar-active: #e4e4e7;
+  --border-sidebar: #e4e4e7;
+  --text-sidebar: #52525b;
+  --text-sidebar-active: #18181b;
+  --text-sidebar-label: #a1a1aa;
 
   /* borders */
   --border: #e4e4e7;
@@ -60,6 +60,10 @@
 
   /* overlay (modal/slide-over backdrop) */
   --overlay: rgb(9 9 11 / 0.32);
+
+  /* scrollbar (thumb idle + hover) */
+  --scrollbar-thumb: rgb(0 0 0 / 0.18);
+  --scrollbar-thumb-hover: rgb(0 0 0 / 0.32);
 
   /* radius scale (the one shape system for the whole app) */
   --radius-sm: 0.375rem;
@@ -116,6 +120,10 @@
   --status-violet-fg: #c4b5fd;
 
   --overlay: rgb(0 0 0 / 0.6);
+
+  /* scrollbar (lighter thumb on dark surfaces) */
+  --scrollbar-thumb: rgb(255 255 255 / 0.14);
+  --scrollbar-thumb-hover: rgb(255 255 255 / 0.28);
 }
 
 /* ─────────────────────────────────────────────────────────────────────────────
@@ -163,10 +171,8 @@
   --color-violet-fg: var(--status-violet-fg);
   --color-violet-bg: var(--status-violet-bg);
 
-  --font-sans:
-    'Geist Variable', 'Geist', ui-sans-serif, system-ui, -apple-system, sans-serif;
-  --font-mono:
-    'Geist Mono Variable', 'Geist Mono', ui-monospace, 'Cascadia Code', monospace;
+  --font-sans: 'Geist Variable', 'Geist', ui-sans-serif, system-ui, -apple-system, sans-serif;
+  --font-mono: 'Geist Mono Variable', 'Geist Mono', ui-monospace, 'Cascadia Code', monospace;
 
   --radius-sm: var(--radius-sm);
   --radius-md: var(--radius-md);
@@ -195,9 +201,48 @@ body {
   background: var(--bg-page);
   color: var(--text-primary);
   font-family: var(--font-sans);
-  font-feature-settings: 'ss01' 1, 'cv01' 1;
+  font-feature-settings:
+    'ss01' 1,
+    'cv01' 1;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   Scrollbars — thin, rounded, theme-aware. Track is transparent so the thumb
+   floats over the surface; it brightens on hover. Firefox uses scrollbar-*,
+   Chromium/Safari use ::-webkit-scrollbar.
+   ───────────────────────────────────────────────────────────────────────────── */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--scrollbar-thumb) transparent;
+}
+
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background-color: var(--scrollbar-thumb);
+  border-radius: 9999px;
+  /* transparent border creates inset padding so the thumb reads as a slim pill */
+  border: 2px solid transparent;
+  background-clip: padding-box;
+  transition: background-color 0.15s ease;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background-color: var(--scrollbar-thumb-hover);
+}
+
+/* Don't paint a chunky square where the bars meet. */
+::-webkit-scrollbar-corner {
+  background: transparent;
 }
 
 /* Mono utility */

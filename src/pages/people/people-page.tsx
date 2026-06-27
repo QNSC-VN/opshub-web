@@ -13,6 +13,8 @@ import { cn } from '@/shared/lib/utils';
 import type { components } from '@/shared/api/types';
 
 type EmployeeResponse = components['schemas']['EmployeeResponseDto'];
+type EquipmentType = NonNullable<components['schemas']['SubmitOnboardingDto']['equipmentType']>;
+type PreferredOs = NonNullable<components['schemas']['SubmitOnboardingDto']['preferredOs']>;
 
 // ── Config ────────────────────────────────────────────────────────────────────
 
@@ -27,8 +29,6 @@ const STATUS_CLASS: Record<string, string> = {
   on_leave: 'bg-warning-bg text-warning',
   offboarded: 'bg-neutral-bg text-neutral-fg',
 };
-
-const ALL_ROLES = ['it-admin', 'hr', 'security', 'manager', 'employee'];
 
 const STATUS_FILTERS = [
   { value: '', label: 'All' },
@@ -91,7 +91,13 @@ function RoleChip({ role }: { role: string }) {
 
 // ── Status select ─────────────────────────────────────────────────────────────
 
-function StatusSelect({ employee, onSuccess }: { employee: EmployeeResponse; onSuccess: () => void }) {
+function StatusSelect({
+  employee,
+  onSuccess,
+}: {
+  employee: EmployeeResponse;
+  onSuccess: () => void;
+}) {
   const [loading, setLoading] = useState(false);
 
   async function handleChange(e: React.ChangeEvent<HTMLSelectElement>) {
@@ -133,23 +139,17 @@ interface ModalProps {
 }
 
 function EmployeeModal({ mode, employee, onClose, onSuccess }: ModalProps) {
+  // Roles are intentionally NOT edited here. Role assignment is a governance
+  // action handled on Settings → Access Control (RBAC), enforced server-side
+  // with an escalation guard. The directory modal manages profile fields only.
   const [form, setForm] = useState({
     email: employee?.email ?? '',
     displayName: employee?.displayName ?? '',
     department: employee?.department ?? '',
     jobTitle: employee?.jobTitle ?? '',
-    roles: employee?.roles ?? [],
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-
-  const toggleRole = (role: string) =>
-    setForm((prev) => ({
-      ...prev,
-      roles: prev.roles.includes(role)
-        ? prev.roles.filter((r: string) => r !== role)
-        : [...prev.roles, role],
-    }));
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -163,10 +163,13 @@ function EmployeeModal({ mode, employee, onClose, onSuccess }: ModalProps) {
           displayName: form.displayName,
           department: form.department || undefined,
           jobTitle: form.jobTitle || undefined,
-          roles: form.roles,
         },
       });
-      if (err) { setError('Failed to create employee'); setLoading(false); return; }
+      if (err) {
+        setError('Failed to create employee');
+        setLoading(false);
+        return;
+      }
     } else if (employee) {
       const { error: err } = await api.PATCH('/v1/employees/{id}', {
         params: { path: { id: employee.id } },
@@ -174,10 +177,13 @@ function EmployeeModal({ mode, employee, onClose, onSuccess }: ModalProps) {
           displayName: form.displayName,
           department: form.department || null,
           jobTitle: form.jobTitle || null,
-          roles: form.roles,
         },
       });
-      if (err) { setError('Failed to update employee'); setLoading(false); return; }
+      if (err) {
+        setError('Failed to update employee');
+        setLoading(false);
+        return;
+      }
     }
 
     setLoading(false);
@@ -187,19 +193,18 @@ function EmployeeModal({ mode, employee, onClose, onSuccess }: ModalProps) {
   }
 
   return (
-    <Modal
-      open
-      onClose={onClose}
-      title={mode === 'create' ? 'Add employee' : 'Edit employee'}
-    >
+    <Modal open onClose={onClose} title={mode === 'create' ? 'Add employee' : 'Edit employee'}>
       <form onSubmit={onSubmit} className="flex flex-col gap-4 p-5">
         {mode === 'create' && (
           <div className="flex flex-col gap-1.5">
             <label className="text-xs font-medium text-fg-muted">Email *</label>
             <input
-              type="email" required value={form.email}
+              type="email"
+              required
+              value={form.email}
               onChange={(e) => setForm({ ...form, email: e.target.value })}
-              className={inputClass} placeholder="user@company.com"
+              className={inputClass}
+              placeholder="user@company.com"
             />
           </div>
         )}
@@ -207,9 +212,12 @@ function EmployeeModal({ mode, employee, onClose, onSuccess }: ModalProps) {
         <div className="flex flex-col gap-1.5">
           <label className="text-xs font-medium text-fg-muted">Display name *</label>
           <input
-            type="text" required value={form.displayName}
+            type="text"
+            required
+            value={form.displayName}
             onChange={(e) => setForm({ ...form, displayName: e.target.value })}
-            className={inputClass} placeholder="Jane Smith"
+            className={inputClass}
+            placeholder="Jane Smith"
           />
         </div>
 
@@ -217,38 +225,42 @@ function EmployeeModal({ mode, employee, onClose, onSuccess }: ModalProps) {
           <div className="flex flex-col gap-1.5">
             <label className="text-xs font-medium text-fg-muted">Department</label>
             <input
-              type="text" value={form.department}
+              type="text"
+              value={form.department}
               onChange={(e) => setForm({ ...form, department: e.target.value })}
-              className={inputClass} placeholder="Engineering"
+              className={inputClass}
+              placeholder="Engineering"
             />
           </div>
           <div className="flex flex-col gap-1.5">
             <label className="text-xs font-medium text-fg-muted">Job title</label>
             <input
-              type="text" value={form.jobTitle}
+              type="text"
+              value={form.jobTitle}
               onChange={(e) => setForm({ ...form, jobTitle: e.target.value })}
-              className={inputClass} placeholder="Engineer"
+              className={inputClass}
+              placeholder="Engineer"
             />
           </div>
         </div>
 
         <div className="flex flex-col gap-1.5">
           <label className="text-xs font-medium text-fg-muted">Roles</label>
-          <div className="flex flex-wrap gap-1.5">
-            {ALL_ROLES.map((role) => (
-              <button
-                key={role} type="button" onClick={() => toggleRole(role)}
-                className={[
-                  'rounded-md border px-2.5 py-1 text-xs font-medium transition-colors',
-                  form.roles.includes(role)
-                    ? 'border-accent bg-accent text-accent-fg'
-                    : 'border-border bg-surface text-fg-muted hover:border-border-strong hover:bg-surface-hover',
-                ].join(' ')}
-              >
-                {role}
-              </button>
-            ))}
-          </div>
+          {mode === 'edit' && employee && employee.roles.length > 0 ? (
+            <div className="flex flex-wrap gap-1.5">
+              {employee.roles.map((r) => (
+                <RoleChip key={r} role={r} />
+              ))}
+            </div>
+          ) : (
+            <p className="text-xs text-fg-subtle">
+              {mode === 'create' ? 'New employees start with no roles.' : 'No roles assigned.'}
+            </p>
+          )}
+          <p className="text-xs text-fg-subtle">
+            Roles are managed in{' '}
+            <span className="font-medium text-fg-muted">Settings → Access Control</span>.
+          </p>
         </div>
 
         {error && <p className="text-xs text-danger">{error}</p>}
@@ -258,7 +270,8 @@ function EmployeeModal({ mode, employee, onClose, onSuccess }: ModalProps) {
             Cancel
           </button>
           <button
-            type="submit" disabled={loading}
+            type="submit"
+            disabled={loading}
             className="h-8 rounded-md bg-accent px-3.5 text-sm font-medium text-accent-fg hover:bg-accent-hover disabled:opacity-60"
           >
             {loading ? 'Saving…' : mode === 'create' ? 'Create' : 'Save changes'}
@@ -274,16 +287,16 @@ function EmployeeModal({ mode, employee, onClose, onSuccess }: ModalProps) {
 const WIZARD_STEPS = ['Position', 'Equipment', 'Access', 'Review'] as const;
 
 const EQUIPMENT_OPTIONS = [
-  { value: 'laptop',      label: 'Laptop',      desc: 'Standard mobile workstation' },
-  { value: 'desktop',     label: 'Desktop',     desc: 'Fixed workstation + monitor' },
+  { value: 'laptop', label: 'Laptop', desc: 'Standard mobile workstation' },
+  { value: 'desktop', label: 'Desktop', desc: 'Fixed workstation + monitor' },
   { value: 'remote_only', label: 'Remote only', desc: 'No device — uses personal machine' },
-  { value: 'byod',        label: 'BYOD',        desc: 'Bring your own device' },
+  { value: 'byod', label: 'BYOD', desc: 'Bring your own device' },
 ] as const;
 
 const OS_OPTIONS = [
   { value: 'windows', label: 'Windows' },
-  { value: 'macos',   label: 'macOS' },
-  { value: 'linux',   label: 'Linux' },
+  { value: 'macos', label: 'macOS' },
+  { value: 'linux', label: 'Linux' },
 ] as const;
 
 const ACCESS_OPTIONS = [
@@ -304,19 +317,30 @@ interface OnboardingModalProps {
   onSuccess: (requestId: string) => void;
 }
 
+/** Label/value row for the onboarding review step. Hidden when value is empty. */
+function ReviewRow({ label, value }: { label: string; value?: string }) {
+  if (!value) return null;
+  return (
+    <div className="flex justify-between gap-4 py-1.5 text-sm border-b border-border last:border-0">
+      <span className="text-fg-muted shrink-0">{label}</span>
+      <span className="text-fg text-right">{value}</span>
+    </div>
+  );
+}
+
 function OnboardingModal({ employee, onClose, onSuccess }: OnboardingModalProps) {
   const [step, setStep] = useState(0);
 
   // Step 0 — Position
-  const [startDate, setStartDate]     = useState('');
-  const [department, setDepartment]   = useState(employee.department ?? '');
-  const [jobTitle, setJobTitle]       = useState(employee.jobTitle ?? '');
+  const [startDate, setStartDate] = useState('');
+  const [department, setDepartment] = useState(employee.department ?? '');
+  const [jobTitle, setJobTitle] = useState(employee.jobTitle ?? '');
   const [managerName, setManagerName] = useState('');
   const [startDateErr, setStartDateErr] = useState('');
 
   // Step 1 — Equipment
-  const [equipmentType, setEquipmentType] = useState('laptop');
-  const [preferredOs, setPreferredOs]     = useState('windows');
+  const [equipmentType, setEquipmentType] = useState<EquipmentType>('laptop');
+  const [preferredOs, setPreferredOs] = useState<PreferredOs>('windows');
   const [equipmentNote, setEquipmentNote] = useState('');
 
   // Step 2 — Access
@@ -328,50 +352,64 @@ function OnboardingModal({ employee, onClose, onSuccess }: OnboardingModalProps)
     mutationFn: async () => {
       const { data, error: err } = await api.POST('/v1/workforce/onboarding', {
         body: {
-          employeeId:    employee.id,
+          employeeId: employee.id,
           startDate,
-          department:    department    || undefined,
-          jobTitle:      jobTitle      || undefined,
-          managerName:   managerName   || undefined,
+          department: department || undefined,
+          jobTitle: jobTitle || undefined,
+          managerName: managerName || undefined,
           equipmentType: equipmentType || undefined,
-          preferredOs:   preferredOs   || undefined,
+          preferredOs: preferredOs || undefined,
           equipmentNote: equipmentNote || undefined,
-          accessNeeds:   accessNeeds.length ? accessNeeds : undefined,
+          accessNeeds: accessNeeds.length ? accessNeeds : undefined,
         },
       });
       if (err || !data) throw new Error('Failed to submit onboarding request');
       return data;
     },
     onSuccess: (data) => onSuccess(data.requestId),
-    onError:   (err: Error) => setSubmitError(err.message),
+    onError: (err: Error) => setSubmitError(err.message),
   });
 
   function toggleAccess(item: string) {
-    setAccessNeeds((prev) => prev.includes(item) ? prev.filter((x) => x !== item) : [...prev, item]);
+    setAccessNeeds((prev) =>
+      prev.includes(item) ? prev.filter((x) => x !== item) : [...prev, item],
+    );
   }
 
   function next() {
-    if (step === 0 && !startDate) { setStartDateErr('Start date is required'); return; }
+    if (step === 0 && !startDate) {
+      setStartDateErr('Start date is required');
+      return;
+    }
     setStartDateErr('');
     setStep((s) => s + 1);
   }
 
-  // Step indicator
-  function StepBar() {
+  // Step indicator. These are render helpers (called as functions, not mounted
+  // as <Component/>) so they read wizard state via closure without remounting
+  // or resetting on each parent render.
+  function renderStepBar() {
     return (
       <div className="flex items-center mb-6">
         {WIZARD_STEPS.map((label, i) => (
           <div key={label} className="flex items-center flex-1 last:flex-none">
             <div className="flex flex-col items-center gap-1 shrink-0">
-              <div className={cn(
-                'flex h-7 w-7 items-center justify-center rounded-full text-xs font-semibold transition-colors',
-                i < step  ? 'bg-accent text-accent-fg' : '',
-                i === step ? 'bg-accent text-accent-fg ring-2 ring-accent/30' : '',
-                i > step  ? 'bg-surface-muted text-fg-muted border border-border' : '',
-              )}>
+              <div
+                className={cn(
+                  'flex h-7 w-7 items-center justify-center rounded-full text-xs font-semibold transition-colors',
+                  i < step ? 'bg-accent text-accent-fg' : '',
+                  i === step ? 'bg-accent text-accent-fg ring-2 ring-accent/30' : '',
+                  i > step ? 'bg-surface-muted text-fg-muted border border-border' : '',
+                )}
+              >
                 {i < step ? <Check className="h-3.5 w-3.5" /> : i + 1}
               </div>
-              <span className={cn('text-[10px] font-medium whitespace-nowrap', i === step ? 'text-fg' : 'text-fg-muted')}>
+              <span
+                className={cn(
+                  'text-[10px] font-medium whitespace-nowrap',
+                  i === step ? 'text-fg' : 'text-fg-muted',
+                )}
+              >
                 {label}
               </span>
             </div>
@@ -385,50 +423,89 @@ function OnboardingModal({ employee, onClose, onSuccess }: OnboardingModalProps)
   }
 
   // Step 0: Position
-  function StepPosition() {
+  function renderStepPosition() {
     return (
       <div className="flex flex-col gap-4">
         <div className="flex flex-col gap-1.5">
-          <label className="text-xs font-medium text-fg-muted">Start date <span className="text-danger">*</span></label>
+          <label className="text-xs font-medium text-fg-muted">
+            Start date <span className="text-danger">*</span>
+          </label>
           <input
-            type="date" value={startDate}
-            onChange={(e) => { setStartDate(e.target.value); setStartDateErr(''); }}
-            className={cn(inputClass, startDateErr ? 'border-danger focus:border-danger focus:ring-danger/20' : '')}
+            type="date"
+            value={startDate}
+            onChange={(e) => {
+              setStartDate(e.target.value);
+              setStartDateErr('');
+            }}
+            className={cn(
+              inputClass,
+              startDateErr ? 'border-danger focus:border-danger focus:ring-danger/20' : '',
+            )}
           />
-          {startDateErr && <p role="alert" className="text-xs text-danger">{startDateErr}</p>}
+          {startDateErr && (
+            <p role="alert" className="text-xs text-danger">
+              {startDateErr}
+            </p>
+          )}
         </div>
         <div className="grid grid-cols-2 gap-3">
           <div className="flex flex-col gap-1.5">
             <label className="text-xs font-medium text-fg-muted">Department</label>
-            <input type="text" value={department} onChange={(e) => setDepartment(e.target.value)} className={inputClass} placeholder="Engineering" />
+            <input
+              type="text"
+              value={department}
+              onChange={(e) => setDepartment(e.target.value)}
+              className={inputClass}
+              placeholder="Engineering"
+            />
           </div>
           <div className="flex flex-col gap-1.5">
             <label className="text-xs font-medium text-fg-muted">Job title</label>
-            <input type="text" value={jobTitle} onChange={(e) => setJobTitle(e.target.value)} className={inputClass} placeholder="Software Engineer" />
+            <input
+              type="text"
+              value={jobTitle}
+              onChange={(e) => setJobTitle(e.target.value)}
+              className={inputClass}
+              placeholder="Software Engineer"
+            />
           </div>
         </div>
         <div className="flex flex-col gap-1.5">
           <label className="text-xs font-medium text-fg-muted">Direct manager</label>
-          <input type="text" value={managerName} onChange={(e) => setManagerName(e.target.value)} className={inputClass} placeholder="e.g. Jane Smith" />
-          <p className="text-xs text-fg-subtle">The manager who approves step 1 of the onboarding chain.</p>
+          <input
+            type="text"
+            value={managerName}
+            onChange={(e) => setManagerName(e.target.value)}
+            className={inputClass}
+            placeholder="e.g. Jane Smith"
+          />
+          <p className="text-xs text-fg-subtle">
+            The manager who approves step 1 of the onboarding chain.
+          </p>
         </div>
       </div>
     );
   }
 
   // Step 1: Equipment
-  function StepEquipment() {
+  function renderStepEquipment() {
     return (
       <div className="flex flex-col gap-4">
         <div className="flex flex-col gap-2">
           <label className="text-xs font-medium text-fg-muted">Device type</label>
           <div className="grid grid-cols-2 gap-2">
             {EQUIPMENT_OPTIONS.map((opt) => (
-              <button key={opt.value} type="button" onClick={() => setEquipmentType(opt.value)}
+              <button
+                key={opt.value}
+                type="button"
+                onClick={() => setEquipmentType(opt.value)}
                 className={cn(
                   'flex flex-col gap-0.5 rounded-lg border px-3 py-2.5 text-left transition-colors',
-                  equipmentType === opt.value ? 'border-accent bg-accent/5 ring-1 ring-accent/30' : 'border-border bg-surface hover:bg-surface-hover',
-                )}>
+                  equipmentType === opt.value
+                    ? 'border-accent bg-accent/5 ring-1 ring-accent/30'
+                    : 'border-border bg-surface hover:bg-surface-hover',
+                )}
+              >
                 <span className="text-sm font-medium text-fg">{opt.label}</span>
                 <span className="text-xs text-fg-muted">{opt.desc}</span>
               </button>
@@ -439,11 +516,17 @@ function OnboardingModal({ employee, onClose, onSuccess }: OnboardingModalProps)
           <label className="text-xs font-medium text-fg-muted">Preferred OS</label>
           <div className="flex gap-2">
             {OS_OPTIONS.map((opt) => (
-              <button key={opt.value} type="button" onClick={() => setPreferredOs(opt.value)}
+              <button
+                key={opt.value}
+                type="button"
+                onClick={() => setPreferredOs(opt.value)}
                 className={cn(
                   'flex-1 rounded-md border px-3 py-1.5 text-sm font-medium transition-colors',
-                  preferredOs === opt.value ? 'border-accent bg-accent/5 text-accent ring-1 ring-accent/30' : 'border-border bg-surface text-fg-muted hover:bg-surface-hover',
-                )}>
+                  preferredOs === opt.value
+                    ? 'border-accent bg-accent/5 text-accent ring-1 ring-accent/30'
+                    : 'border-border bg-surface text-fg-muted hover:bg-surface-hover',
+                )}
+              >
                 {opt.label}
               </button>
             ))}
@@ -451,7 +534,10 @@ function OnboardingModal({ employee, onClose, onSuccess }: OnboardingModalProps)
         </div>
         <div className="flex flex-col gap-1.5">
           <label className="text-xs font-medium text-fg-muted">Notes for IT</label>
-          <textarea value={equipmentNote} onChange={(e) => setEquipmentNote(e.target.value)} rows={2}
+          <textarea
+            value={equipmentNote}
+            onChange={(e) => setEquipmentNote(e.target.value)}
+            rows={2}
             placeholder="e.g. needs external monitor, standing desk adapter…"
             className="w-full resize-none rounded-md border border-border bg-surface px-3 py-2 text-sm text-fg placeholder:text-fg-subtle focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/20"
           />
@@ -461,20 +547,33 @@ function OnboardingModal({ employee, onClose, onSuccess }: OnboardingModalProps)
   }
 
   // Step 2: Access
-  function StepAccess() {
+  function renderStepAccess() {
     return (
       <div className="flex flex-col gap-3">
-        <p className="text-xs text-fg-muted">Select systems the new hire needs access to on day one.</p>
+        <p className="text-xs text-fg-muted">
+          Select systems the new hire needs access to on day one.
+        </p>
         <div className="flex flex-col gap-1.5">
           {ACCESS_OPTIONS.map((item) => {
             const checked = accessNeeds.includes(item);
             return (
-              <button key={item} type="button" onClick={() => toggleAccess(item)}
+              <button
+                key={item}
+                type="button"
+                onClick={() => toggleAccess(item)}
                 className={cn(
                   'flex items-center gap-3 rounded-md border px-3 py-2 text-left text-sm transition-colors',
-                  checked ? 'border-accent bg-accent/5 text-fg' : 'border-border bg-surface text-fg-muted hover:bg-surface-hover',
-                )}>
-                <span className={cn('flex h-4 w-4 shrink-0 items-center justify-center rounded border', checked ? 'border-accent bg-accent' : 'border-border')}>
+                  checked
+                    ? 'border-accent bg-accent/5 text-fg'
+                    : 'border-border bg-surface text-fg-muted hover:bg-surface-hover',
+                )}
+              >
+                <span
+                  className={cn(
+                    'flex h-4 w-4 shrink-0 items-center justify-center rounded border',
+                    checked ? 'border-accent bg-accent' : 'border-border',
+                  )}
+                >
                   {checked && <Check className="h-3 w-3 text-white" />}
                 </span>
                 {item}
@@ -487,46 +586,53 @@ function OnboardingModal({ employee, onClose, onSuccess }: OnboardingModalProps)
   }
 
   // Step 3: Review
-  function ReviewRow({ label, value }: { label: string; value?: string }) {
-    if (!value) return null;
-    return (
-      <div className="flex justify-between gap-4 py-1.5 text-sm border-b border-border last:border-0">
-        <span className="text-fg-muted shrink-0">{label}</span>
-        <span className="text-fg text-right">{value}</span>
-      </div>
-    );
-  }
-
-  function StepReview() {
+  function renderStepReview() {
     return (
       <div className="flex flex-col gap-4">
         <div className="rounded-lg border border-border bg-surface p-4">
-          <p className="text-[10px] font-semibold uppercase tracking-wider text-fg-muted mb-2">Position</p>
+          <p className="text-[10px] font-semibold uppercase tracking-wider text-fg-muted mb-2">
+            Position
+          </p>
           <ReviewRow label="Start date" value={startDate} />
           <ReviewRow label="Department" value={department} />
-          <ReviewRow label="Job title"  value={jobTitle} />
-          <ReviewRow label="Manager"    value={managerName} />
+          <ReviewRow label="Job title" value={jobTitle} />
+          <ReviewRow label="Manager" value={managerName} />
         </div>
         <div className="rounded-lg border border-border bg-surface p-4">
-          <p className="text-[10px] font-semibold uppercase tracking-wider text-fg-muted mb-2">Equipment</p>
-          <ReviewRow label="Device type"  value={EQUIPMENT_OPTIONS.find((o) => o.value === equipmentType)?.label} />
-          <ReviewRow label="Preferred OS" value={OS_OPTIONS.find((o) => o.value === preferredOs)?.label} />
-          <ReviewRow label="Notes"        value={equipmentNote || undefined} />
+          <p className="text-[10px] font-semibold uppercase tracking-wider text-fg-muted mb-2">
+            Equipment
+          </p>
+          <ReviewRow
+            label="Device type"
+            value={EQUIPMENT_OPTIONS.find((o) => o.value === equipmentType)?.label}
+          />
+          <ReviewRow
+            label="Preferred OS"
+            value={OS_OPTIONS.find((o) => o.value === preferredOs)?.label}
+          />
+          <ReviewRow label="Notes" value={equipmentNote || undefined} />
         </div>
         {accessNeeds.length > 0 && (
           <div className="rounded-lg border border-border bg-surface p-4">
-            <p className="text-[10px] font-semibold uppercase tracking-wider text-fg-muted mb-2">Access needed</p>
+            <p className="text-[10px] font-semibold uppercase tracking-wider text-fg-muted mb-2">
+              Access needed
+            </p>
             <div className="flex flex-wrap gap-1.5 mt-1">
               {accessNeeds.map((a) => (
-                <span key={a} className="rounded-full bg-accent/10 px-2.5 py-0.5 text-xs font-medium text-accent">{a}</span>
+                <span
+                  key={a}
+                  className="rounded-full bg-accent/10 px-2.5 py-0.5 text-xs font-medium text-accent"
+                >
+                  {a}
+                </span>
               ))}
             </div>
           </div>
         )}
         <div className="rounded-md border border-border bg-surface-muted px-4 py-3">
           <p className="text-xs text-fg-muted">
-            Submitting creates a 3-step approval chain: <strong className="text-fg">Manager → IT → HR</strong>.
-            Track progress under Inbox.
+            Submitting creates a 3-step approval chain:{' '}
+            <strong className="text-fg">Manager → IT → HR</strong>. Track progress under Inbox.
           </p>
         </div>
         {submitError && <p className="text-xs text-danger">{submitError}</p>}
@@ -534,7 +640,12 @@ function OnboardingModal({ employee, onClose, onSuccess }: OnboardingModalProps)
     );
   }
 
-  const steps = [<StepPosition />, <StepEquipment />, <StepAccess />, <StepReview />];
+  const steps = [
+    renderStepPosition(),
+    renderStepEquipment(),
+    renderStepAccess(),
+    renderStepReview(),
+  ];
 
   return (
     <SlideOver
@@ -545,17 +656,28 @@ function OnboardingModal({ employee, onClose, onSuccess }: OnboardingModalProps)
       description="Set up position, equipment, and system access for the new hire."
       footer={
         <div className="flex items-center justify-between">
-          <button type="button" onClick={() => step === 0 ? onClose() : setStep((s) => s - 1)} className={cancelBtnClass}>
+          <button
+            type="button"
+            onClick={() => (step === 0 ? onClose() : setStep((s) => s - 1))}
+            className={cancelBtnClass}
+          >
             {step === 0 ? 'Cancel' : '← Back'}
           </button>
           {step < WIZARD_STEPS.length - 1 ? (
-            <button type="button" onClick={next}
-              className="h-8 inline-flex items-center gap-1.5 rounded-md bg-accent px-4 text-sm font-medium text-accent-fg hover:bg-accent-hover">
+            <button
+              type="button"
+              onClick={next}
+              className="h-8 inline-flex items-center gap-1.5 rounded-md bg-accent px-4 text-sm font-medium text-accent-fg hover:bg-accent-hover"
+            >
               Next <ChevronRight className="h-3.5 w-3.5" />
             </button>
           ) : (
-            <button type="button" disabled={mutation.isPending} onClick={() => mutation.mutate()}
-              className="h-8 rounded-md bg-accent px-4 text-sm font-medium text-accent-fg hover:bg-accent-hover disabled:opacity-60">
+            <button
+              type="button"
+              disabled={mutation.isPending}
+              onClick={() => mutation.mutate()}
+              className="h-8 rounded-md bg-accent px-4 text-sm font-medium text-accent-fg hover:bg-accent-hover disabled:opacity-60"
+            >
               {mutation.isPending ? 'Submitting…' : 'Submit onboarding'}
             </button>
           )}
@@ -563,7 +685,7 @@ function OnboardingModal({ employee, onClose, onSuccess }: OnboardingModalProps)
       }
     >
       <div className="px-6 py-5">
-        <StepBar />
+        {renderStepBar()}
         {steps[step]}
       </div>
     </SlideOver>
@@ -600,7 +722,10 @@ function OffboardingModal({ employee, onClose, onSuccess }: OffboardingModalProp
   return (
     <Modal open onClose={onClose} title={`Offboard — ${employee.displayName}`}>
       <form
-        onSubmit={(e) => { e.preventDefault(); mutation.mutate(); }}
+        onSubmit={(e) => {
+          e.preventDefault();
+          mutation.mutate();
+        }}
         className="flex flex-col gap-4 p-5"
       >
         <div className="rounded-md border border-warning/30 bg-warning-bg px-4 py-3">
@@ -609,7 +734,9 @@ function OffboardingModal({ employee, onClose, onSuccess }: OffboardingModalProp
           </p>
         </div>
         <div className="flex flex-col gap-1.5">
-          <label className="text-xs font-medium text-fg-muted">Reason <span className="text-fg-subtle">(optional)</span></label>
+          <label className="text-xs font-medium text-fg-muted">
+            Reason <span className="text-fg-subtle">(optional)</span>
+          </label>
           <textarea
             value={reason}
             onChange={(e) => setReason(e.target.value)}
@@ -624,7 +751,8 @@ function OffboardingModal({ employee, onClose, onSuccess }: OffboardingModalProp
             Cancel
           </button>
           <button
-            type="submit" disabled={mutation.isPending}
+            type="submit"
+            disabled={mutation.isPending}
             className="h-8 rounded-md bg-red-600 px-3.5 text-sm font-medium text-white hover:bg-red-700 dark:hover:bg-red-500 disabled:opacity-60"
           >
             {mutation.isPending ? 'Submitting…' : 'Offboard employee'}
@@ -641,7 +769,10 @@ export function PeoplePage() {
   const qc = useQueryClient();
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('active');
-  const [modal, setModal] = useState<{ mode: 'create' | 'edit'; employee?: EmployeeResponse } | null>(null);
+  const [modal, setModal] = useState<{
+    mode: 'create' | 'edit';
+    employee?: EmployeeResponse;
+  } | null>(null);
   const [onboarding, setOnboarding] = useState<EmployeeResponse | null>(null);
   const [offboarding, setOffboarding] = useState<EmployeeResponse | null>(null);
   const [selectedEmp, setSelectedEmp] = useState<EmployeeResponse | null>(null);
@@ -676,7 +807,8 @@ export function PeoplePage() {
         <div className="flex gap-1 rounded-lg bg-surface-muted p-1">
           {STATUS_FILTERS.map(({ value, label }) => (
             <button
-              key={value} onClick={() => setStatusFilter(value)}
+              key={value}
+              onClick={() => setStatusFilter(value)}
               className={[
                 'rounded-md px-3 py-1 text-sm font-medium transition-colors',
                 statusFilter === value
@@ -689,9 +821,14 @@ export function PeoplePage() {
           ))}
         </div>
         <div className="relative w-64">
-          <Search className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-fg-subtle" strokeWidth={1.75} />
+          <Search
+            className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-fg-subtle"
+            strokeWidth={1.75}
+          />
           <input
-            type="text" placeholder="Search name or email…" value={search}
+            type="text"
+            placeholder="Search name or email…"
+            value={search}
             onChange={(e) => setSearch(e.target.value)}
             className="h-8 w-full rounded-md border border-border bg-surface pl-8 pr-3 text-sm text-fg placeholder:text-fg-subtle transition-colors focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/20"
           />
@@ -703,27 +840,47 @@ export function PeoplePage() {
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-border bg-surface-muted">
-              <th className="px-4 py-2.5 text-left text-xs font-medium tracking-wide text-fg-subtle">Name</th>
-              <th className="px-4 py-2.5 text-left text-xs font-medium tracking-wide text-fg-subtle">Department</th>
-              <th className="px-4 py-2.5 text-left text-xs font-medium tracking-wide text-fg-subtle">Job Title</th>
-              <th className="px-4 py-2.5 text-left text-xs font-medium tracking-wide text-fg-subtle">Roles</th>
-              <th className="px-4 py-2.5 text-left text-xs font-medium tracking-wide text-fg-subtle">Status</th>
+              <th className="px-4 py-2.5 text-left text-xs font-medium tracking-wide text-fg-subtle">
+                Name
+              </th>
+              <th className="px-4 py-2.5 text-left text-xs font-medium tracking-wide text-fg-subtle">
+                Department
+              </th>
+              <th className="px-4 py-2.5 text-left text-xs font-medium tracking-wide text-fg-subtle">
+                Job Title
+              </th>
+              <th className="px-4 py-2.5 text-left text-xs font-medium tracking-wide text-fg-subtle">
+                Roles
+              </th>
+              <th className="px-4 py-2.5 text-left text-xs font-medium tracking-wide text-fg-subtle">
+                Status
+              </th>
               <th className="px-4 py-2.5" />
             </tr>
           </thead>
           <tbody className="divide-y divide-border">
             {employees.isLoading && (
-              <tr><td colSpan={6} className="px-4 py-8 text-center text-sm text-fg-subtle">Loading…</td></tr>
+              <tr>
+                <td colSpan={6} className="px-4 py-8 text-center text-sm text-fg-subtle">
+                  Loading…
+                </td>
+              </tr>
             )}
             {employees.isError && (
-              <tr><td colSpan={6} className="px-4 py-8 text-center text-sm text-danger">Failed to load employees. Is the API running?</td></tr>
+              <tr>
+                <td colSpan={6} className="px-4 py-8 text-center text-sm text-danger">
+                  Failed to load employees. Is the API running?
+                </td>
+              </tr>
             )}
             {employees.data?.data?.length === 0 && (
               <tr>
                 <td colSpan={6} className="px-4 py-12 text-center">
                   <div className="flex flex-col items-center gap-2">
                     <span className="text-sm text-fg-muted">No employees found</span>
-                    <span className="text-xs text-fg-subtle">Add your first employee or adjust the filter</span>
+                    <span className="text-xs text-fg-subtle">
+                      Add your first employee or adjust the filter
+                    </span>
                   </div>
                 </td>
               </tr>
@@ -732,7 +889,10 @@ export function PeoplePage() {
               <tr
                 key={emp.id}
                 className="cursor-pointer transition-colors hover:bg-surface-hover"
-                onClick={() => { setSelectedEmp(emp); setAvatarUrl(null); }}
+                onClick={() => {
+                  setSelectedEmp(emp);
+                  setAvatarUrl(null);
+                }}
               >
                 <td className="px-4 py-3">
                   <div className="flex items-center gap-3">
@@ -751,9 +911,11 @@ export function PeoplePage() {
                 </td>
                 <td className="px-4 py-3">
                   <div className="flex flex-wrap gap-1">
-                    {emp.roles.length
-                      ? emp.roles.map((r) => <RoleChip key={r} role={r} />)
-                      : <span className="text-xs text-fg-subtle">—</span>}
+                    {emp.roles.length ? (
+                      emp.roles.map((r) => <RoleChip key={r} role={r} />)
+                    ) : (
+                      <span className="text-xs text-fg-subtle">—</span>
+                    )}
                   </div>
                 </td>
                 <td className="px-4 py-3">
@@ -814,7 +976,10 @@ export function PeoplePage() {
         <OnboardingModal
           employee={onboarding}
           onClose={() => setOnboarding(null)}
-          onSuccess={(requestId) => { setOnboarding(null); notifyRequest(requestId); }}
+          onSuccess={(requestId) => {
+            setOnboarding(null);
+            notifyRequest(requestId);
+          }}
         />
       )}
 
@@ -822,7 +987,10 @@ export function PeoplePage() {
         <OffboardingModal
           employee={offboarding}
           onClose={() => setOffboarding(null)}
-          onSuccess={(requestId) => { setOffboarding(null); notifyRequest(requestId); }}
+          onSuccess={(requestId) => {
+            setOffboarding(null);
+            notifyRequest(requestId);
+          }}
         />
       )}
 
@@ -834,7 +1002,7 @@ export function PeoplePage() {
         description={[selectedEmp?.jobTitle, selectedEmp?.department].filter(Boolean).join(' · ')}
         width="lg"
       >
-      {selectedEmp && (
+        {selectedEmp && (
           <>
             <SlideOverSection title="Avatar">
               <PhotoUploadWidget
@@ -843,7 +1011,10 @@ export function PeoplePage() {
                 presignUrl={`/v1/employees/${selectedEmp.id}/avatar/presign`}
                 confirmUrl={`/v1/employees/${selectedEmp.id}/avatar/confirm`}
                 accept="image/jpeg,image/png,image/webp"
-                onSuccess={(url) => { setAvatarUrl(url); qc.invalidateQueries({ queryKey: ['employees'] }); }}
+                onSuccess={(url) => {
+                  setAvatarUrl(url);
+                  qc.invalidateQueries({ queryKey: ['employees'] });
+                }}
                 label="Employee photo (JPEG, PNG, WebP · max 5 MB)"
               />
             </SlideOverSection>
@@ -853,26 +1024,41 @@ export function PeoplePage() {
             <SlideOverSection title="Details">
               <dl className="grid grid-cols-2 gap-x-4 gap-y-3 text-sm">
                 {[
-                  { label: 'Email',      value: selectedEmp.email },
+                  { label: 'Email', value: selectedEmp.email },
                   { label: 'Department', value: selectedEmp.department ?? '—' },
-                  { label: 'Job title',  value: selectedEmp.jobTitle ?? '—' },
-                  { label: 'Status',     value: (
-                    <StatusBadge tone={
-                      selectedEmp.status === 'active'       ? 'green'   :
-                      selectedEmp.status === 'inactive'     ? 'neutral' :
-                      selectedEmp.status === 'on_leave'     ? 'amber'   :
-                      selectedEmp.status === 'terminated'   ? 'red'     : 'neutral'
-                    }>
-                      {selectedEmp.status}
-                    </StatusBadge>
-                  )},
-                  { label: 'Roles', value: (
-                    <div className="flex flex-wrap gap-1">
-                      {selectedEmp.roles.length
-                        ? selectedEmp.roles.map((r) => <RoleChip key={r} role={r} />)
-                        : <span className="text-fg-subtle">—</span>}
-                    </div>
-                  )},
+                  { label: 'Job title', value: selectedEmp.jobTitle ?? '—' },
+                  {
+                    label: 'Status',
+                    value: (
+                      <StatusBadge
+                        tone={
+                          selectedEmp.status === 'active'
+                            ? 'green'
+                            : selectedEmp.status === 'inactive'
+                              ? 'neutral'
+                              : selectedEmp.status === 'on_leave'
+                                ? 'amber'
+                                : selectedEmp.status === 'terminated'
+                                  ? 'red'
+                                  : 'neutral'
+                        }
+                      >
+                        {selectedEmp.status}
+                      </StatusBadge>
+                    ),
+                  },
+                  {
+                    label: 'Roles',
+                    value: (
+                      <div className="flex flex-wrap gap-1">
+                        {selectedEmp.roles.length ? (
+                          selectedEmp.roles.map((r) => <RoleChip key={r} role={r} />)
+                        ) : (
+                          <span className="text-fg-subtle">—</span>
+                        )}
+                      </div>
+                    ),
+                  },
                 ].map(({ label, value }) => (
                   <div key={label}>
                     <dt className="text-xs text-fg-subtle">{label}</dt>

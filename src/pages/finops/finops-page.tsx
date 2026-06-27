@@ -1,6 +1,16 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Plus, X, AlertTriangle, DollarSign, Package, Users, PackageOpen, ChevronLeft, ChevronRight } from 'lucide-react';
+import {
+  Plus,
+  X,
+  AlertTriangle,
+  DollarSign,
+  Package,
+  Users,
+  PackageOpen,
+  ChevronLeft,
+  ChevronRight,
+} from 'lucide-react';
 import { getToken } from '@/shared/api/auth-store';
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from 'recharts';
 
@@ -84,7 +94,7 @@ function useLicenses(search: string, page: number) {
         headers: { Authorization: `Bearer ${getToken() ?? ''}` },
       });
       if (!res.ok) {
-        const body = await res.json().catch(() => ({})) as { message?: string };
+        const body = (await res.json().catch(() => ({}))) as { message?: string };
         throw new Error(body.message ?? 'Failed to load licenses');
       }
       return res.json() as Promise<PagedResult<SoftwareLicense>>;
@@ -138,17 +148,22 @@ function AddLicenseModal({ onClose, onSuccess }: AddLicenseModalProps) {
           vendor: form.vendor,
           licenseType: form.licenseType,
           seatCount: form.seatCount ? Number(form.seatCount) : null,
-          costPerSeatCents: form.costPerSeatCents ? Math.round(Number(form.costPerSeatCents) * 100) : null,
+          costPerSeatCents: form.costPerSeatCents
+            ? Math.round(Number(form.costPerSeatCents) * 100)
+            : null,
           renewalDate: form.renewalDate || null,
           notes: form.notes || null,
         }),
       });
       if (!res.ok) {
-        const body = await res.json().catch(() => ({})) as { message?: string };
+        const body = (await res.json().catch(() => ({}))) as { message?: string };
         throw new Error(body.message ?? 'Failed to create license');
       }
     },
-    onSuccess: () => { onSuccess(); onClose(); },
+    onSuccess: () => {
+      onSuccess();
+      onClose();
+    },
     onError: (err: Error) => setError(err.message),
   });
 
@@ -163,7 +178,10 @@ function AddLicenseModal({ onClose, onSuccess }: AddLicenseModalProps) {
       <div className="w-full max-w-md rounded-xl bg-surface shadow-xl">
         <div className="flex items-center justify-between border-b border-border px-5 py-4">
           <h2 className="text-sm font-semibold text-fg">Add license</h2>
-          <button onClick={onClose} className="rounded p-1 text-fg-subtle hover:bg-surface-hover hover:text-fg">
+          <button
+            onClick={onClose}
+            className="rounded p-1 text-fg-subtle hover:bg-surface-hover hover:text-fg"
+          >
             <X className="h-4 w-4" />
           </button>
         </div>
@@ -196,7 +214,12 @@ function AddLicenseModal({ onClose, onSuccess }: AddLicenseModalProps) {
               <select
                 className={inputClass}
                 value={form.licenseType}
-                onChange={(e) => setForm((f) => ({ ...f, licenseType: e.target.value as SoftwareLicense['licenseType'] }))}
+                onChange={(e) =>
+                  setForm((f) => ({
+                    ...f,
+                    licenseType: e.target.value as SoftwareLicense['licenseType'],
+                  }))
+                }
               >
                 <option value="subscription">Subscription</option>
                 <option value="per_seat">Per seat</option>
@@ -205,7 +228,9 @@ function AddLicenseModal({ onClose, onSuccess }: AddLicenseModalProps) {
               </select>
             </div>
             <div>
-              <label className="mb-1 block text-xs font-medium text-fg-subtle">Seats (blank = unlimited)</label>
+              <label className="mb-1 block text-xs font-medium text-fg-subtle">
+                Seats (blank = unlimited)
+              </label>
               <input
                 type="number"
                 min={1}
@@ -219,7 +244,9 @@ function AddLicenseModal({ onClose, onSuccess }: AddLicenseModalProps) {
 
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="mb-1 block text-xs font-medium text-fg-subtle">Cost/seat/month (USD)</label>
+              <label className="mb-1 block text-xs font-medium text-fg-subtle">
+                Cost/seat/month (USD)
+              </label>
               <input
                 type="number"
                 min={0}
@@ -341,7 +368,9 @@ export function FinOpsPage() {
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-base font-semibold text-fg">Software &amp; License FinOps</h1>
-            <p className="text-xs text-fg-subtle">Seat utilization · renewals · cost optimization</p>
+            <p className="text-xs text-fg-subtle">
+              Seat utilization · renewals · cost optimization
+            </p>
           </div>
           <button
             onClick={() => setShowAdd(true)}
@@ -382,7 +411,9 @@ export function FinOpsPage() {
             label="Renewing soon"
             value={String(expiringCount)}
             sub="within 30 days"
-            color={expiringCount > 0 ? 'bg-warning-bg text-warning' : 'bg-surface-muted text-fg-muted'}
+            color={
+              expiringCount > 0 ? 'bg-warning-bg text-warning' : 'bg-surface-muted text-fg-muted'
+            }
           />
         </div>
 
@@ -403,14 +434,14 @@ export function FinOpsPage() {
                     cx="50%"
                     cy="50%"
                     outerRadius={80}
-                    label={({ name, percent }) => `${name} ${Math.round(percent * 100)}%`}
+                    label={({ name, percent }) => `${name} ${Math.round((percent ?? 0) * 100)}%`}
                     labelLine={false}
                   >
                     {pieData.map((_, i) => (
                       <Cell key={i} fill={CHART_COLORS[i % CHART_COLORS.length]} />
                     ))}
                   </Pie>
-                  <Tooltip formatter={(v: number) => centsToDollars(v)} />
+                  <Tooltip formatter={(v) => centsToDollars(Number(v))} />
                 </PieChart>
               </ResponsiveContainer>
             )}
@@ -446,7 +477,9 @@ export function FinOpsPage() {
                     return (
                       <div key={r.licenseId}>
                         <div className="mb-1 flex items-center justify-between">
-                          <span className="text-xs font-medium text-fg truncate max-w-[60%]">{r.name}</span>
+                          <span className="text-xs font-medium text-fg truncate max-w-[60%]">
+                            {r.name}
+                          </span>
                           <span className="text-xs text-fg-subtle">
                             {r.usedSeats} / {r.seatCount} ({pct}%)
                           </span>
@@ -471,14 +504,19 @@ export function FinOpsPage() {
             <div className="flex items-center gap-3">
               <h2 className="text-sm font-semibold text-fg">License catalog</h2>
               {!licensesLoading && total > 0 && (
-                <span className="text-xs text-fg-muted">{total} license{total !== 1 ? 's' : ''}</span>
+                <span className="text-xs text-fg-muted">
+                  {total} license{total !== 1 ? 's' : ''}
+                </span>
               )}
             </div>
             <input
               className="h-7 w-48 rounded-md border border-border bg-surface-hover px-2 text-xs text-fg placeholder:text-fg-muted focus:border-accent focus:outline-none"
               placeholder="Search…"
               value={search}
-              onChange={(e) => { setSearch(e.target.value); setPage(0); }}
+              onChange={(e) => {
+                setSearch(e.target.value);
+                setPage(0);
+              }}
             />
           </div>
 
@@ -487,27 +525,59 @@ export function FinOpsPage() {
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b border-border bg-surface-hover text-left text-xs text-fg-subtle">
-                    <th className="px-5 py-2 font-medium" scope="col">Product</th>
-                    <th className="px-4 py-2 font-medium" scope="col">Vendor</th>
-                    <th className="px-4 py-2 font-medium" scope="col">Type</th>
-                    <th className="px-4 py-2 font-medium" scope="col">Seats used</th>
-                    <th className="px-4 py-2 font-medium" scope="col">Cost/seat/mo</th>
-                    <th className="px-4 py-2 font-medium" scope="col">Monthly total</th>
-                    <th className="px-4 py-2 font-medium" scope="col">Renewal</th>
-                    <th className="px-4 py-2 font-medium" scope="col">Status</th>
+                    <th className="px-5 py-2 font-medium" scope="col">
+                      Product
+                    </th>
+                    <th className="px-4 py-2 font-medium" scope="col">
+                      Vendor
+                    </th>
+                    <th className="px-4 py-2 font-medium" scope="col">
+                      Type
+                    </th>
+                    <th className="px-4 py-2 font-medium" scope="col">
+                      Seats used
+                    </th>
+                    <th className="px-4 py-2 font-medium" scope="col">
+                      Cost/seat/mo
+                    </th>
+                    <th className="px-4 py-2 font-medium" scope="col">
+                      Monthly total
+                    </th>
+                    <th className="px-4 py-2 font-medium" scope="col">
+                      Renewal
+                    </th>
+                    <th className="px-4 py-2 font-medium" scope="col">
+                      Status
+                    </th>
                   </tr>
                 </thead>
                 <tbody>
                   {Array.from({ length: 6 }).map((_, i) => (
                     <tr key={i} className="border-b border-border/50">
-                      <td className="px-5 py-3"><div className="h-3.5 w-32 animate-pulse rounded bg-surface-muted" /></td>
-                      <td className="px-4 py-3"><div className="h-3.5 w-20 animate-pulse rounded bg-surface-muted" /></td>
-                      <td className="px-4 py-3"><div className="h-3.5 w-16 animate-pulse rounded bg-surface-muted" /></td>
-                      <td className="px-4 py-3"><div className="h-3.5 w-14 animate-pulse rounded bg-surface-muted" /></td>
-                      <td className="px-4 py-3"><div className="h-3.5 w-14 animate-pulse rounded bg-surface-muted" /></td>
-                      <td className="px-4 py-3"><div className="h-3.5 w-14 animate-pulse rounded bg-surface-muted" /></td>
-                      <td className="px-4 py-3"><div className="h-3.5 w-20 animate-pulse rounded bg-surface-muted" /></td>
-                      <td className="px-4 py-3"><div className="h-5 w-16 animate-pulse rounded-full bg-surface-muted" /></td>
+                      <td className="px-5 py-3">
+                        <div className="h-3.5 w-32 animate-pulse rounded bg-surface-muted" />
+                      </td>
+                      <td className="px-4 py-3">
+                        <div className="h-3.5 w-20 animate-pulse rounded bg-surface-muted" />
+                      </td>
+                      <td className="px-4 py-3">
+                        <div className="h-3.5 w-16 animate-pulse rounded bg-surface-muted" />
+                      </td>
+                      <td className="px-4 py-3">
+                        <div className="h-3.5 w-14 animate-pulse rounded bg-surface-muted" />
+                      </td>
+                      <td className="px-4 py-3">
+                        <div className="h-3.5 w-14 animate-pulse rounded bg-surface-muted" />
+                      </td>
+                      <td className="px-4 py-3">
+                        <div className="h-3.5 w-14 animate-pulse rounded bg-surface-muted" />
+                      </td>
+                      <td className="px-4 py-3">
+                        <div className="h-3.5 w-20 animate-pulse rounded bg-surface-muted" />
+                      </td>
+                      <td className="px-4 py-3">
+                        <div className="h-5 w-16 animate-pulse rounded-full bg-surface-muted" />
+                      </td>
                     </tr>
                   ))}
                 </tbody>
@@ -520,7 +590,9 @@ export function FinOpsPage() {
                 {search ? 'No licenses match your search' : 'No licenses yet'}
               </p>
               <p className="mt-1 text-xs text-fg-muted">
-                {search ? 'Try a different product or vendor name.' : 'Add your first software license to start tracking seats and costs.'}
+                {search
+                  ? 'Try a different product or vendor name.'
+                  : 'Add your first software license to start tracking seats and costs.'}
               </p>
             </div>
           ) : (
@@ -529,14 +601,30 @@ export function FinOpsPage() {
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="border-b border-border bg-surface-hover text-left text-xs text-fg-subtle">
-                      <th className="px-5 py-2 font-medium" scope="col">Product</th>
-                      <th className="px-4 py-2 font-medium" scope="col">Vendor</th>
-                      <th className="px-4 py-2 font-medium" scope="col">Type</th>
-                      <th className="px-4 py-2 font-medium" scope="col">Seats used</th>
-                      <th className="px-4 py-2 font-medium" scope="col">Cost/seat/mo</th>
-                      <th className="px-4 py-2 font-medium" scope="col">Monthly total</th>
-                      <th className="px-4 py-2 font-medium" scope="col">Renewal</th>
-                      <th className="px-4 py-2 font-medium" scope="col">Status</th>
+                      <th className="px-5 py-2 font-medium" scope="col">
+                        Product
+                      </th>
+                      <th className="px-4 py-2 font-medium" scope="col">
+                        Vendor
+                      </th>
+                      <th className="px-4 py-2 font-medium" scope="col">
+                        Type
+                      </th>
+                      <th className="px-4 py-2 font-medium" scope="col">
+                        Seats used
+                      </th>
+                      <th className="px-4 py-2 font-medium" scope="col">
+                        Cost/seat/mo
+                      </th>
+                      <th className="px-4 py-2 font-medium" scope="col">
+                        Monthly total
+                      </th>
+                      <th className="px-4 py-2 font-medium" scope="col">
+                        Renewal
+                      </th>
+                      <th className="px-4 py-2 font-medium" scope="col">
+                        Status
+                      </th>
                     </tr>
                   </thead>
                   <tbody className={isFetching ? 'opacity-60' : ''}>
@@ -546,10 +634,15 @@ export function FinOpsPage() {
                       const monthlyTotal = u?.monthlySpendCents ?? null;
                       const days = l.renewalDate ? daysUntilRenewal(l.renewalDate) : null;
                       return (
-                        <tr key={l.id} className="border-b border-border/50 hover:bg-surface-hover/50">
+                        <tr
+                          key={l.id}
+                          className="border-b border-border/50 hover:bg-surface-hover/50"
+                        >
                           <td className="px-5 py-3 font-medium text-fg">{l.name}</td>
                           <td className="px-4 py-3 text-fg-subtle">{l.vendor}</td>
-                          <td className="px-4 py-3 text-fg-subtle">{LICENSE_TYPE_LABEL[l.licenseType]}</td>
+                          <td className="px-4 py-3 text-fg-subtle">
+                            {LICENSE_TYPE_LABEL[l.licenseType]}
+                          </td>
                           <td className="px-4 py-3 text-fg-subtle">
                             {l.seatCount != null
                               ? `${used} / ${l.seatCount}`
@@ -563,15 +656,23 @@ export function FinOpsPage() {
                           </td>
                           <td className="px-4 py-3 text-fg-subtle">
                             {l.renewalDate ? (
-                              <span className={days != null && days <= 30 ? 'text-warning font-medium' : ''}>
+                              <span
+                                className={
+                                  days != null && days <= 30 ? 'text-warning font-medium' : ''
+                                }
+                              >
                                 {l.renewalDate}
                                 {days != null && days <= 30 && days > 0 && ` (${days}d)`}
                                 {days != null && days <= 0 && ' (overdue)'}
                               </span>
-                            ) : '—'}
+                            ) : (
+                              '—'
+                            )}
                           </td>
                           <td className="px-4 py-3">
-                            <span className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium capitalize ${STATUS_BADGE[l.status] ?? ''}`}>
+                            <span
+                              className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium capitalize ${STATUS_BADGE[l.status] ?? ''}`}
+                            >
                               {l.status.replace('_', ' ')}
                             </span>
                           </td>
@@ -586,7 +687,8 @@ export function FinOpsPage() {
               {totalPages > 1 && (
                 <div className="flex items-center justify-between border-t border-border px-5 py-3">
                   <p className="text-xs text-fg-muted">
-                    Showing {page * PAGE_SIZE + 1}–{Math.min((page + 1) * PAGE_SIZE, total)} of {total}
+                    Showing {page * PAGE_SIZE + 1}–{Math.min((page + 1) * PAGE_SIZE, total)} of{' '}
+                    {total}
                   </p>
                   <div className="flex items-center gap-1">
                     <button
