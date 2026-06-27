@@ -66,34 +66,22 @@ interface SubmitModalProps {
 
 function SubmitModal({ onClose, onSuccess }: SubmitModalProps) {
   const [loading, setLoading] = useState(false);
+  const [err, setErr] = useState('');
   const [form, setForm] = useState({
     accessType: 'vpn' as AccessType,
     target: '',
     justification: '',
     durationHours: 8,
   });
-  const [fieldErrors, setFieldErrors] = useState<Partial<Record<keyof typeof form, string>>>({});
 
   function set<K extends keyof typeof form>(k: K, v: (typeof form)[K]) {
     setForm((f) => ({ ...f, [k]: v }));
-    if (fieldErrors[k]) setFieldErrors((e) => ({ ...e, [k]: undefined }));
-  }
-
-  function validate(): boolean {
-    const errors: Partial<Record<keyof typeof form, string>> = {};
-    if (!form.target.trim()) errors.target = 'Target system is required.';
-    if (form.target.trim().length > 200) errors.target = 'Target must be under 200 characters.';
-    if (!form.justification.trim()) errors.justification = 'Justification is required.';
-    if (form.justification.trim().length < 10) errors.justification = 'Provide at least 10 characters of justification.';
-    if (form.durationHours < 1 || form.durationHours > 720) errors.durationHours = 'Duration must be between 1 and 720 hours.';
-    setFieldErrors(errors);
-    return Object.keys(errors).length === 0;
   }
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!validate()) return;
     setLoading(true);
+    setErr('');
     const { error } = await api.POST('/v1/access-requests', {
       body: {
         accessType: form.accessType,
@@ -103,7 +91,7 @@ function SubmitModal({ onClose, onSuccess }: SubmitModalProps) {
       },
     });
     setLoading(false);
-    if (error) { toast.error('Failed to submit request. Please try again.'); return; }
+    if (error) { setErr('Failed to submit request. Please try again.'); return; }
     toast.success('Access request submitted');
     onSuccess();
     onClose();
@@ -117,16 +105,15 @@ function SubmitModal({ onClose, onSuccess }: SubmitModalProps) {
       <div className="w-full max-w-md rounded-xl bg-surface shadow-xl">
         <div className="flex items-center justify-between border-b border-border px-5 py-4">
           <h2 className="text-sm font-semibold text-fg">Request temporary access</h2>
-          <button onClick={onClose} aria-label="Close" className="rounded p-1 text-fg-subtle hover:bg-surface-hover hover:text-fg-muted">
+          <button onClick={onClose} className="rounded p-1 text-fg-subtle hover:bg-surface-hover hover:text-fg-muted">
             <X className="h-4 w-4" />
           </button>
         </div>
-        <form onSubmit={onSubmit} noValidate className="flex flex-col gap-4 p-5">
+        <form onSubmit={onSubmit} className="flex flex-col gap-4 p-5">
           <div className="flex flex-col gap-1.5">
-            <label htmlFor="access-type" className="text-xs font-medium text-fg-muted">Access type <span className="text-red-500" aria-hidden="true">*</span></label>
+            <label className="text-xs font-medium text-fg-muted">Access type *</label>
             <select
-              id="access-type"
-              value={form.accessType}
+              required value={form.accessType}
               onChange={(e) => set('accessType', e.target.value as AccessType)}
               className={inputClass}
             >
@@ -136,48 +123,35 @@ function SubmitModal({ onClose, onSuccess }: SubmitModalProps) {
             </select>
           </div>
           <div className="flex flex-col gap-1.5">
-            <label htmlFor="access-target" className="text-xs font-medium text-fg-muted">Target system / resource <span className="text-red-500" aria-hidden="true">*</span></label>
+            <label className="text-xs font-medium text-fg-muted">Target system / resource *</label>
             <input
-              id="access-target"
-              value={form.target}
+              required value={form.target}
               onChange={(e) => set('target', e.target.value)}
               placeholder="e.g. prod-db-01, 10.0.0.5, s3://my-bucket"
-              aria-invalid={!!fieldErrors.target}
-              aria-describedby={fieldErrors.target ? 'access-target-error' : undefined}
-              className={`${inputClass} ${fieldErrors.target ? 'border-red-400 focus:border-red-400 focus:ring-red-400/20' : ''}`}
+              className={inputClass}
             />
-            {fieldErrors.target && <p id="access-target-error" role="alert" className="text-xs text-red-600">{fieldErrors.target}</p>}
           </div>
           <div className="flex flex-col gap-1.5">
-            <label htmlFor="access-justification" className="text-xs font-medium text-fg-muted">Justification <span className="text-red-500" aria-hidden="true">*</span></label>
+            <label className="text-xs font-medium text-fg-muted">Justification *</label>
             <textarea
-              id="access-justification"
-              value={form.justification}
+              required value={form.justification}
               onChange={(e) => set('justification', e.target.value)}
               rows={3}
               placeholder="Why do you need this access and for what purpose?"
-              aria-invalid={!!fieldErrors.justification}
-              aria-describedby={fieldErrors.justification ? 'access-justification-error' : undefined}
-              className={`w-full resize-none rounded-md border bg-surface px-3 py-2 text-sm text-fg placeholder:text-fg-subtle focus:outline-none focus:ring-2 ${fieldErrors.justification ? 'border-red-400 focus:border-red-400 focus:ring-red-400/20' : 'border-border focus:border-accent focus:ring-accent/20'}`}
+              className="w-full resize-none rounded-md border border-border bg-surface px-3 py-2 text-sm text-fg placeholder:text-fg-subtle focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/20"
             />
-            {fieldErrors.justification && <p id="access-justification-error" role="alert" className="text-xs text-red-600">{fieldErrors.justification}</p>}
           </div>
           <div className="flex flex-col gap-1.5">
-            <label htmlFor="access-duration" className="text-xs font-medium text-fg-muted">Duration (hours)</label>
+            <label className="text-xs font-medium text-fg-muted">Duration (hours)</label>
             <input
-              id="access-duration"
-              type="number" min={1} max={720}
+              type="number" min={1} max={720} required
               value={form.durationHours}
               onChange={(e) => set('durationHours', Number(e.target.value))}
-              aria-invalid={!!fieldErrors.durationHours}
-              aria-describedby={fieldErrors.durationHours ? 'access-duration-error' : 'access-duration-hint'}
-              className={`${inputClass} ${fieldErrors.durationHours ? 'border-red-400 focus:border-red-400 focus:ring-red-400/20' : ''}`}
+              className={inputClass}
             />
-            {fieldErrors.durationHours
-              ? <p id="access-duration-error" role="alert" className="text-xs text-red-600">{fieldErrors.durationHours}</p>
-              : <p id="access-duration-hint" className="text-xs text-fg-subtle">Maximum 720 hours (30 days). Access is automatically revoked after expiry.</p>
-            }
+            <p className="text-xs text-fg-subtle">Maximum 720 hours (30 days). Access is automatically revoked after expiry.</p>
           </div>
+          {err && <p className="text-xs text-danger">{err}</p>}
           <div className="flex justify-end gap-2 pt-1">
             <button
               type="button" onClick={onClose}
