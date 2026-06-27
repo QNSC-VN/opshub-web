@@ -13,6 +13,9 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Plus, Trash2, X, ShieldCheck, Users, UserCheck } from 'lucide-react';
 import { toast } from 'sonner';
 import { api } from '@/shared/api/client';
+import { SlideOver, SlideOverSection } from '@/shared/ui/slide-over';
+import { ActivityTimeline } from '@/shared/ui/activity-timeline';
+import { ConfirmDialog } from '@/shared/ui/confirm-dialog';
 import type {
   RoleResponse,
   PermissionResponse,
@@ -23,7 +26,7 @@ import type {
 // ── Shared helpers ────────────────────────────────────────────────────────────
 
 const inputClass =
-  'h-8 w-full rounded-md border border-zinc-200 bg-white px-3 text-sm text-zinc-900 placeholder:text-zinc-400 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20';
+  'h-8 w-full rounded-md border border-border bg-surface px-3 text-sm text-fg placeholder:text-fg-subtle focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/20';
 
 function formatDate(iso: string | null | undefined) {
   if (!iso) return '—';
@@ -32,7 +35,7 @@ function formatDate(iso: string | null | undefined) {
 
 function SectionCard({ children, className = '' }: { children: React.ReactNode; className?: string }) {
   return (
-    <div className={`rounded-xl border border-zinc-200 bg-white overflow-hidden ${className}`}>
+    <div className={`rounded-xl border border-border bg-surface overflow-hidden ${className}`}>
       {children}
     </div>
   );
@@ -82,24 +85,24 @@ function CreateRoleModal({ onClose, onSuccess }: CreateRoleModalProps) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/20" onClick={(e) => e.target === e.currentTarget && onClose()}>
-      <div className="w-full max-w-sm rounded-xl bg-white shadow-xl">
-        <div className="flex items-center justify-between border-b border-zinc-100 px-5 py-4">
-          <h2 className="text-sm font-semibold text-zinc-900">Create Role</h2>
-          <button onClick={onClose} className="rounded p-1 text-zinc-400 hover:bg-zinc-100"><X className="h-4 w-4" /></button>
+      <div className="w-full max-w-sm rounded-xl bg-surface shadow-xl">
+        <div className="flex items-center justify-between border-b border-border px-5 py-4">
+          <h2 className="text-sm font-semibold text-fg">Create Role</h2>
+          <button onClick={onClose} className="rounded p-1 text-fg-subtle hover:bg-surface-hover"><X className="h-4 w-4" /></button>
         </div>
         <form onSubmit={submit} className="flex flex-col gap-3 p-5">
           <div className="flex flex-col gap-1.5">
-            <label className="text-xs font-medium text-zinc-700">Key (slug)</label>
+            <label className="text-xs font-medium text-fg-muted">Key (slug)</label>
             <input className={inputClass} placeholder="e.g. compliance-reviewer" value={key} onChange={(e) => setKey(e.target.value)} />
           </div>
           <div className="flex flex-col gap-1.5">
-            <label className="text-xs font-medium text-zinc-700">Display name</label>
+            <label className="text-xs font-medium text-fg-muted">Display name</label>
             <input className={inputClass} placeholder="e.g. Compliance Reviewer" value={name} onChange={(e) => setName(e.target.value)} />
           </div>
-          {err && <p className="text-xs text-red-500">{err}</p>}
+          {err && <p className="text-xs text-danger">{err}</p>}
           <div className="flex justify-end gap-2 pt-1">
-            <button type="button" onClick={onClose} className="h-8 rounded-md border border-zinc-200 px-3.5 text-sm font-medium text-zinc-600 hover:bg-zinc-50">Cancel</button>
-            <button type="submit" disabled={loading} className="h-8 rounded-md bg-blue-600 px-3.5 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-60">{loading ? 'Creating…' : 'Create'}</button>
+            <button type="button" onClick={onClose} className="h-8 rounded-md border border-border px-3.5 text-sm font-medium text-fg-muted hover:bg-surface-hover">Cancel</button>
+            <button type="submit" disabled={loading} className="h-8 rounded-md bg-accent px-3.5 text-sm font-medium text-white hover:bg-accent-hover disabled:opacity-60">{loading ? 'Creating…' : 'Create'}</button>
           </div>
         </form>
       </div>
@@ -111,14 +114,20 @@ function RolesTab() {
   const qc = useQueryClient();
   const { data: roles, isLoading } = useRoles();
   const { data: allPerms } = usePermissions();
-  const [expanded, setExpanded] = useState<string | null>(null);
+  const [selectedRole, setSelectedRole] = useState<RoleResponse | null>(null);
   const [showCreate, setShowCreate] = useState(false);
+  const [addPermKey, setAddPermKey] = useState<string>('');
+  const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
   const invalidate = () => qc.invalidateQueries({ queryKey: ['authz', 'roles'] });
 
-  async function deleteRole(id: string) {
-    if (!confirm('Delete this role? This cannot be undone.')) return;
-    const { error } = await api.DELETE('/v1/authz/roles/{id}', { params: { path: { id } } });
+  async function doDeleteRole() {
+    if (!pendingDeleteId) return;
+    setDeleting(true);
+    const { error } = await api.DELETE('/v1/authz/roles/{id}', { params: { path: { id: pendingDeleteId } } });
+    setDeleting(false);
+    setPendingDeleteId(null);
     if (error) { toast.error('Failed to delete role'); return; }
     toast.success('Role deleted');
     invalidate();
@@ -151,96 +160,135 @@ function RolesTab() {
   return (
     <>
       {showCreate && <CreateRoleModal onClose={() => setShowCreate(false)} onSuccess={invalidate} />}
+      <ConfirmDialog
+        open={!!pendingDeleteId}
+        variant="danger"
+        title="Delete role?"
+        description="This will permanently remove the role and all its permissions. Users with this role will lose access. This cannot be undone."
+        confirmLabel="Delete role"
+        loading={deleting}
+        onConfirm={() => void doDeleteRole()}
+        onCancel={() => setPendingDeleteId(null)}
+      />
       <SectionCard>
-        <div className="flex items-center justify-between border-b border-zinc-100 px-5 py-3">
-          <p className="text-sm font-semibold text-zinc-800">Roles</p>
-          <button onClick={() => setShowCreate(true)} className="flex items-center gap-1.5 h-7 rounded-md bg-blue-600 px-3 text-xs font-medium text-white hover:bg-blue-700">
+        <div className="flex items-center justify-between border-b border-border px-5 py-3">
+          <p className="text-sm font-semibold text-fg">Roles</p>
+          <button onClick={() => setShowCreate(true)} className="flex items-center gap-1.5 h-7 rounded-md bg-accent px-3 text-xs font-medium text-white hover:bg-accent-hover">
             <Plus className="h-3.5 w-3.5" /> New role
           </button>
         </div>
-        {isLoading && <p className="px-5 py-8 text-center text-sm text-zinc-400">Loading…</p>}
-        <div className="divide-y divide-zinc-50">
+        {isLoading && <p className="px-5 py-8 text-center text-sm text-fg-subtle">Loading…</p>}
+        <div className="divide-y divide-border">
           {roles?.map((role) => (
             <div key={role.id}>
               <div
-                className="flex items-center justify-between px-5 py-3 cursor-pointer hover:bg-zinc-50"
-                onClick={() => setExpanded(expanded === role.id ? null : role.id)}
+                className="flex items-center justify-between px-5 py-3 cursor-pointer hover:bg-surface-hover"
+                onClick={() => setSelectedRole(role)}
               >
                 <div className="flex items-center gap-3">
-                  <ShieldCheck className="h-4 w-4 shrink-0 text-zinc-400" strokeWidth={1.75} />
+                  <ShieldCheck className="h-4 w-4 shrink-0 text-fg-subtle" strokeWidth={1.75} />
                   <div>
-                    <p className="text-sm font-medium text-zinc-900">{role.name}</p>
-                    <p className="text-xs text-zinc-400 font-mono">{role.key}</p>
+                    <p className="text-sm font-medium text-fg">{role.name}</p>
+                    <p className="text-xs text-fg-subtle font-mono">{role.key}</p>
                   </div>
                   {role.system && (
-                    <span className="inline-flex rounded-md bg-zinc-100 px-2 py-0.5 text-[10px] font-medium text-zinc-500">System</span>
+                    <span className="inline-flex rounded-md bg-surface-muted px-2 py-0.5 text-[10px] font-medium text-fg-muted">System</span>
                   )}
                 </div>
                 <div className="flex items-center gap-3">
-                  <span className="text-xs text-zinc-400">{role.permissions.length} permissions</span>
+                  <span className="text-xs text-fg-subtle">{role.permissions.length} permissions</span>
                   {!role.system && (
                     <button
-                      onClick={(e) => { e.stopPropagation(); deleteRole(role.id); }}
-                      className="rounded p-1 text-zinc-400 hover:bg-red-50 hover:text-red-500"
+                      aria-label="Delete role"
+                      onClick={(e) => { e.stopPropagation(); setPendingDeleteId(role.id); }}
+                      className="rounded p-1 text-fg-subtle hover:bg-danger-bg hover:text-danger"
                     >
                       <Trash2 className="h-3.5 w-3.5" />
                     </button>
                   )}
                 </div>
               </div>
-              {expanded === role.id && (
-                <div className="border-t border-zinc-50 bg-zinc-50/50 px-5 py-3">
-                  <p className="mb-2 text-[10px] font-medium uppercase tracking-wider text-zinc-400">Permissions</p>
-                  <div className="flex flex-wrap gap-1.5 mb-3">
-                    {role.permissions.map((p) => (
-                      <span
-                        key={p}
-                        className="inline-flex items-center gap-1 rounded-md bg-white border border-zinc-200 px-2 py-0.5 text-xs text-zinc-700 font-mono"
-                      >
-                        {p}
-                        {!role.system && (
-                          <button
-                            onClick={() => removePermission(role.id, p)}
-                            className="text-zinc-400 hover:text-red-500"
-                          >
-                            <X className="h-3 w-3" />
-                          </button>
-                        )}
-                      </span>
-                    ))}
-                    {role.permissions.length === 0 && <p className="text-xs text-zinc-400">No permissions assigned</p>}
-                  </div>
-                  {!role.system && allPerms && (
-                    <div className="flex items-center gap-2 mt-2">
-                      <select
-                        id={`add-perm-${role.id}`}
-                        className="h-7 rounded-md border border-zinc-200 bg-white px-2 text-xs text-zinc-700"
-                        defaultValue=""
-                      >
-                        <option value="" disabled>Add permission…</option>
-                        {allPerms
-                          .filter((p) => !role.permissions.includes(p.key))
-                          .map((p) => (
-                            <option key={p.key} value={p.key}>{p.key}</option>
-                          ))}
-                      </select>
-                      <button
-                        onClick={() => {
-                          const sel = document.getElementById(`add-perm-${role.id}`) as HTMLSelectElement;
-                          if (sel.value) addPermission(role.id, sel.value);
-                        }}
-                        className="h-7 rounded-md bg-zinc-800 px-2.5 text-xs font-medium text-white hover:bg-zinc-700"
-                      >
-                        Add
-                      </button>
-                    </div>
-                  )}
-                </div>
-              )}
             </div>
           ))}
         </div>
       </SectionCard>
+
+      {/* Role detail SlideOver */}
+      {(() => {
+        const current = selectedRole ? (roles?.find((r) => r.id === selectedRole.id) ?? selectedRole) : null;
+        return (
+          <SlideOver
+            open={!!selectedRole}
+            onClose={() => { setSelectedRole(null); setAddPermKey(''); }}
+            title={current?.name ?? 'Role'}
+            description={current?.key}
+            width="md"
+          >
+            {current && (
+              <>
+                <SlideOverSection title="Details">
+                  <dl className="grid grid-cols-2 gap-x-4 gap-y-3 text-sm">
+                    <div>
+                      <dt className="text-xs text-fg-subtle">Key</dt>
+                      <dd className="mt-0.5 font-mono text-sm text-fg">{current.key}</dd>
+                    </div>
+                    <div>
+                      <dt className="text-xs text-fg-subtle">Type</dt>
+                      <dd className="mt-0.5">
+                        {current.system
+                          ? <span className="inline-flex rounded-md bg-surface-muted px-2 py-0.5 text-xs font-medium text-fg-muted">System</span>
+                          : <span className="text-fg">Custom</span>}
+                      </dd>
+                    </div>
+                    <div className="col-span-2">
+                      <dt className="mb-2 text-xs text-fg-subtle">Permissions ({current.permissions.length})</dt>
+                      <div className="flex flex-wrap gap-1.5">
+                        {current.permissions.map((p) => (
+                          <span key={p} className="inline-flex items-center gap-1 rounded-md border border-border bg-surface px-2 py-0.5 font-mono text-xs text-fg-muted">
+                            {p}
+                            {!current.system && (
+                              <button onClick={() => removePermission(current.id, p)} className="text-fg-subtle hover:text-danger">
+                                <X className="h-3 w-3" />
+                              </button>
+                            )}
+                          </span>
+                        ))}
+                        {current.permissions.length === 0 && <p className="text-xs text-fg-subtle">No permissions assigned</p>}
+                      </div>
+                      {!current.system && allPerms && (
+                        <div className="mt-3 flex items-center gap-2">
+                          <select
+                            value={addPermKey}
+                            onChange={(e) => setAddPermKey(e.target.value)}
+                            className="h-7 rounded-md border border-border bg-surface px-2 text-xs text-fg-muted"
+                          >
+                            <option value="" disabled>Add permission…</option>
+                            {allPerms
+                              .filter((p) => !current.permissions.includes(p.key))
+                              .map((p) => (
+                                <option key={p.key} value={p.key}>{p.key}</option>
+                              ))}
+                          </select>
+                          <button
+                            onClick={() => { if (addPermKey) { addPermission(current.id, addPermKey); setAddPermKey(''); } }}
+                            className="h-7 rounded-md bg-fg px-2.5 text-xs font-medium text-surface hover:opacity-90"
+                          >
+                            Add
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  </dl>
+                </SlideOverSection>
+                <div className="mx-5 h-px bg-surface-muted" />
+                <SlideOverSection title="Activity">
+                  <ActivityTimeline resourceId={current.id} resourceType="role" />
+                </SlideOverSection>
+              </>
+            )}
+          </SlideOver>
+        );
+      })()}
     </>
   );
 }
@@ -269,27 +317,27 @@ function AssignRoleModal({ roles, onClose, onSuccess }: AssignRoleModalProps) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/20" onClick={(e) => e.target === e.currentTarget && onClose()}>
-      <div className="w-full max-w-sm rounded-xl bg-white shadow-xl">
-        <div className="flex items-center justify-between border-b border-zinc-100 px-5 py-4">
-          <h2 className="text-sm font-semibold text-zinc-900">Assign Role</h2>
-          <button onClick={onClose} className="rounded p-1 text-zinc-400 hover:bg-zinc-100"><X className="h-4 w-4" /></button>
+      <div className="w-full max-w-sm rounded-xl bg-surface shadow-xl">
+        <div className="flex items-center justify-between border-b border-border px-5 py-4">
+          <h2 className="text-sm font-semibold text-fg">Assign Role</h2>
+          <button onClick={onClose} className="rounded p-1 text-fg-subtle hover:bg-surface-hover"><X className="h-4 w-4" /></button>
         </div>
         <form onSubmit={submit} className="flex flex-col gap-3 p-5">
           <div className="flex flex-col gap-1.5">
-            <label className="text-xs font-medium text-zinc-700">User ID</label>
+            <label className="text-xs font-medium text-fg-muted">User ID</label>
             <input className={inputClass} placeholder="UUID of the employee" value={userId} onChange={(e) => setUserId(e.target.value)} />
           </div>
           <div className="flex flex-col gap-1.5">
-            <label className="text-xs font-medium text-zinc-700">Role</label>
-            <select className="h-8 w-full rounded-md border border-zinc-200 bg-white px-3 text-sm text-zinc-900 focus:outline-none" value={roleId} onChange={(e) => setRoleId(e.target.value)}>
+            <label className="text-xs font-medium text-fg-muted">Role</label>
+            <select className="h-8 w-full rounded-md border border-border bg-surface px-3 text-sm text-fg focus:outline-none" value={roleId} onChange={(e) => setRoleId(e.target.value)}>
               <option value="">Select a role…</option>
               {roles.map((r) => <option key={r.id} value={r.id}>{r.name}</option>)}
             </select>
           </div>
-          {err && <p className="text-xs text-red-500">{err}</p>}
+          {err && <p className="text-xs text-danger">{err}</p>}
           <div className="flex justify-end gap-2 pt-1">
-            <button type="button" onClick={onClose} className="h-8 rounded-md border border-zinc-200 px-3.5 text-sm font-medium text-zinc-600 hover:bg-zinc-50">Cancel</button>
-            <button type="submit" disabled={loading} className="h-8 rounded-md bg-blue-600 px-3.5 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-60">{loading ? 'Assigning…' : 'Assign'}</button>
+            <button type="button" onClick={onClose} className="h-8 rounded-md border border-border px-3.5 text-sm font-medium text-fg-muted hover:bg-surface-hover">Cancel</button>
+            <button type="submit" disabled={loading} className="h-8 rounded-md bg-accent px-3.5 text-sm font-medium text-white hover:bg-accent-hover disabled:opacity-60">{loading ? 'Assigning…' : 'Assign'}</button>
           </div>
         </form>
       </div>
@@ -301,6 +349,8 @@ function AssignmentsTab() {
   const qc = useQueryClient();
   const [lookupUserId, setLookupUserId] = useState('');
   const [searchUserId, setSearchUserId] = useState('');
+  const [pendingRevokeId, setPendingRevokeId] = useState<string | null>(null);
+  const [revoking, setRevoking] = useState(false);
   const { data: assignments, isLoading } = useQuery<RoleAssignmentResponse[]>({
     queryKey: ['authz', 'assignments', searchUserId],
     enabled: searchUserId.length > 0,
@@ -317,9 +367,12 @@ function AssignmentsTab() {
 
   const invalidate = () => qc.invalidateQueries({ queryKey: ['authz', 'assignments', searchUserId] });
 
-  async function revoke(id: string) {
-    if (!confirm('Revoke this role assignment?')) return;
-    const { error } = await api.DELETE('/v1/authz/assignments/{id}', { params: { path: { id } } });
+  async function doRevoke() {
+    if (!pendingRevokeId) return;
+    setRevoking(true);
+    const { error } = await api.DELETE('/v1/authz/assignments/{id}', { params: { path: { id: pendingRevokeId } } });
+    setRevoking(false);
+    setPendingRevokeId(null);
     if (error) { toast.error('Failed to revoke assignment'); return; }
     toast.success('Assignment revoked');
     invalidate();
@@ -330,17 +383,27 @@ function AssignmentsTab() {
   return (
     <>
       {showAssign && roles && <AssignRoleModal roles={roles} onClose={() => setShowAssign(false)} onSuccess={invalidate} />}
+      <ConfirmDialog
+        open={!!pendingRevokeId}
+        variant="warning"
+        title="Revoke role assignment?"
+        description="The user will immediately lose all permissions granted by this role. Active sessions may be affected on next token refresh."
+        confirmLabel="Revoke"
+        loading={revoking}
+        onConfirm={() => void doRevoke()}
+        onCancel={() => setPendingRevokeId(null)}
+      />}
       <SectionCard>
-        <div className="flex items-center justify-between border-b border-zinc-100 px-5 py-3">
-          <p className="text-sm font-semibold text-zinc-800">Role Assignments</p>
-          <button onClick={() => setShowAssign(true)} className="flex items-center gap-1.5 h-7 rounded-md bg-blue-600 px-3 text-xs font-medium text-white hover:bg-blue-700">
+        <div className="flex items-center justify-between border-b border-border px-5 py-3">
+          <p className="text-sm font-semibold text-fg">Role Assignments</p>
+          <button onClick={() => setShowAssign(true)} className="flex items-center gap-1.5 h-7 rounded-md bg-accent px-3 text-xs font-medium text-white hover:bg-accent-hover">
             <Plus className="h-3.5 w-3.5" /> Assign role
           </button>
         </div>
         {/* User lookup */}
-        <div className="flex items-center gap-2 border-b border-zinc-100 px-5 py-3">
+        <div className="flex items-center gap-2 border-b border-border px-5 py-3">
           <input
-            className="h-7 flex-1 rounded-md border border-zinc-200 bg-white px-3 text-sm text-zinc-900 placeholder:text-zinc-400 focus:outline-none"
+            className="h-7 flex-1 rounded-md border border-border bg-surface px-3 text-sm text-fg placeholder:text-fg-subtle focus:outline-none"
             placeholder="Enter User ID to look up assignments…"
             value={lookupUserId}
             onChange={(e) => setLookupUserId(e.target.value)}
@@ -348,40 +411,40 @@ function AssignmentsTab() {
           />
           <button
             onClick={() => setSearchUserId(lookupUserId.trim())}
-            className="h-7 rounded-md bg-zinc-800 px-3 text-xs font-medium text-white hover:bg-zinc-700"
+            className="h-7 rounded-md bg-fg px-3 text-xs font-medium text-surface hover:opacity-90"
           >
             Lookup
           </button>
         </div>
-        {isLoading && <p className="px-5 py-8 text-center text-sm text-zinc-400">Loading…</p>}
-        {!searchUserId && <p className="px-5 py-8 text-center text-sm text-zinc-400">Enter a User ID above to view their assignments.</p>}
+        {isLoading && <p className="px-5 py-8 text-center text-sm text-fg-subtle">Loading…</p>}
+        {!searchUserId && <p className="px-5 py-8 text-center text-sm text-fg-subtle">Enter a User ID above to view their assignments.</p>}
         <table className="w-full text-sm">
           <thead>
-            <tr className="border-b border-zinc-100 bg-zinc-50">
-              <th className="px-4 py-2.5 text-left text-xs font-medium text-zinc-500">User ID</th>
-              <th className="px-4 py-2.5 text-left text-xs font-medium text-zinc-500">Role</th>
-              <th className="px-4 py-2.5 text-left text-xs font-medium text-zinc-500">Scope</th>
-              <th className="px-4 py-2.5 text-left text-xs font-medium text-zinc-500">Expires</th>
+            <tr className="border-b border-border bg-surface-muted">
+              <th className="px-4 py-2.5 text-left text-xs font-medium text-fg-muted">User ID</th>
+              <th className="px-4 py-2.5 text-left text-xs font-medium text-fg-muted">Role</th>
+              <th className="px-4 py-2.5 text-left text-xs font-medium text-fg-muted">Scope</th>
+              <th className="px-4 py-2.5 text-left text-xs font-medium text-fg-muted">Expires</th>
               <th className="px-4 py-2.5 w-10" />
             </tr>
           </thead>
-          <tbody className="divide-y divide-zinc-50">
+          <tbody className="divide-y divide-border">
             {searchUserId && !isLoading && !assignments?.length && (
-              <tr><td colSpan={5} className="py-10 text-center text-sm text-zinc-400">No assignments found for this user</td></tr>
+              <tr><td colSpan={5} className="py-10 text-center text-sm text-fg-subtle">No assignments found for this user</td></tr>
             )}
             {assignments?.map((a) => (
-              <tr key={a.id} className="hover:bg-zinc-50">
-                <td className="px-4 py-2.5 text-xs font-mono text-zinc-600">{a.userId.slice(0, 8)}…</td>
+              <tr key={a.id} className="hover:bg-surface-hover">
+                <td className="px-4 py-2.5 text-xs font-mono text-fg-muted">{a.userId.slice(0, 8)}…</td>
                 <td className="px-4 py-2.5">
-                  <span className="inline-flex items-center gap-1 rounded-md bg-blue-50 px-2 py-0.5 text-xs font-medium text-blue-700">
+                  <span className="inline-flex items-center gap-1 rounded-md bg-accent-muted px-2 py-0.5 text-xs font-medium text-accent">
                     <ShieldCheck className="h-3 w-3" />
                     {roleMap[a.roleId] ?? a.roleId}
                   </span>
                 </td>
-                <td className="px-4 py-2.5 text-xs text-zinc-500 capitalize">{a.scopeType}</td>
-                <td className="px-4 py-2.5 text-xs text-zinc-500">{formatDate(a.expiresAt)}</td>
+                <td className="px-4 py-2.5 text-xs text-fg-muted capitalize">{a.scopeType}</td>
+                <td className="px-4 py-2.5 text-xs text-fg-muted">{formatDate(a.expiresAt)}</td>
                 <td className="px-4 py-2.5">
-                  <button onClick={() => revoke(a.id)} className="rounded p-1 text-zinc-400 hover:bg-red-50 hover:text-red-500">
+                  <button aria-label="Revoke assignment" onClick={() => setPendingRevokeId(a.id)} className="rounded p-1 text-fg-subtle hover:bg-danger-bg hover:text-danger">
                     <Trash2 className="h-3.5 w-3.5" />
                   </button>
                 </td>
@@ -424,28 +487,28 @@ function CreateDelegationModal({ onClose, onSuccess }: CreateDelegationModalProp
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/20" onClick={(e) => e.target === e.currentTarget && onClose()}>
-      <div className="w-full max-w-sm rounded-xl bg-white shadow-xl">
-        <div className="flex items-center justify-between border-b border-zinc-100 px-5 py-4">
-          <h2 className="text-sm font-semibold text-zinc-900">Create Delegation</h2>
-          <button onClick={onClose} className="rounded p-1 text-zinc-400 hover:bg-zinc-100"><X className="h-4 w-4" /></button>
+      <div className="w-full max-w-sm rounded-xl bg-surface shadow-xl">
+        <div className="flex items-center justify-between border-b border-border px-5 py-4">
+          <h2 className="text-sm font-semibold text-fg">Create Delegation</h2>
+          <button onClick={onClose} className="rounded p-1 text-fg-subtle hover:bg-surface-hover"><X className="h-4 w-4" /></button>
         </div>
         <form onSubmit={submit} className="flex flex-col gap-3 p-5">
           <div className="flex flex-col gap-1.5">
-            <label className="text-xs font-medium text-zinc-700">Delegate to (User ID)</label>
+            <label className="text-xs font-medium text-fg-muted">Delegate to (User ID)</label>
             <input className={inputClass} placeholder="UUID of the delegate" value={toUserId} onChange={(e) => setToUserId(e.target.value)} />
           </div>
           <div className="flex flex-col gap-1.5">
-            <label className="text-xs font-medium text-zinc-700">Ends at</label>
+            <label className="text-xs font-medium text-fg-muted">Ends at</label>
             <input type="datetime-local" className={inputClass} value={endsAt} onChange={(e) => setEndsAt(e.target.value)} />
           </div>
           <div className="flex flex-col gap-1.5">
-            <label className="text-xs font-medium text-zinc-700">Reason (optional)</label>
+            <label className="text-xs font-medium text-fg-muted">Reason (optional)</label>
             <input className={inputClass} placeholder="e.g. Parental leave coverage" value={reason} onChange={(e) => setReason(e.target.value)} />
           </div>
-          {err && <p className="text-xs text-red-500">{err}</p>}
+          {err && <p className="text-xs text-danger">{err}</p>}
           <div className="flex justify-end gap-2 pt-1">
-            <button type="button" onClick={onClose} className="h-8 rounded-md border border-zinc-200 px-3.5 text-sm font-medium text-zinc-600 hover:bg-zinc-50">Cancel</button>
-            <button type="submit" disabled={loading} className="h-8 rounded-md bg-blue-600 px-3.5 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-60">{loading ? 'Creating…' : 'Create'}</button>
+            <button type="button" onClick={onClose} className="h-8 rounded-md border border-border px-3.5 text-sm font-medium text-fg-muted hover:bg-surface-hover">Cancel</button>
+            <button type="submit" disabled={loading} className="h-8 rounded-md bg-accent px-3.5 text-sm font-medium text-white hover:bg-accent-hover disabled:opacity-60">{loading ? 'Creating…' : 'Create'}</button>
           </div>
         </form>
       </div>
@@ -464,12 +527,17 @@ function DelegationsTab() {
     },
   });
   const [showCreate, setShowCreate] = useState(false);
+  const [pendingDeleteDelegId, setPendingDeleteDelegId] = useState<string | null>(null);
+  const [deletingDeleg, setDeletingDeleg] = useState(false);
 
   const invalidate = () => qc.invalidateQueries({ queryKey: ['authz', 'delegations'] });
 
-  async function deleteDelegation(id: string) {
-    if (!confirm('Delete this delegation?')) return;
-    const { error } = await api.DELETE('/v1/authz/delegations/{id}', { params: { path: { id } } });
+  async function doDeleteDelegation() {
+    if (!pendingDeleteDelegId) return;
+    setDeletingDeleg(true);
+    const { error } = await api.DELETE('/v1/authz/delegations/{id}', { params: { path: { id: pendingDeleteDelegId } } });
+    setDeletingDeleg(false);
+    setPendingDeleteDelegId(null);
     if (error) { toast.error('Failed to delete delegation'); return; }
     toast.success('Delegation deleted');
     invalidate();
@@ -480,49 +548,59 @@ function DelegationsTab() {
   return (
     <>
       {showCreate && <CreateDelegationModal onClose={() => setShowCreate(false)} onSuccess={invalidate} />}
+      <ConfirmDialog
+        open={!!pendingDeleteDelegId}
+        variant="warning"
+        title="Delete delegation?"
+        description="The delegated approver will no longer be able to act on behalf of the delegator. Any in-flight approvals they are assigned to will need to be reassigned."
+        confirmLabel="Delete delegation"
+        loading={deletingDeleg}
+        onConfirm={() => void doDeleteDelegation()}
+        onCancel={() => setPendingDeleteDelegId(null)}
+      />}
       <SectionCard>
-        <div className="flex items-center justify-between border-b border-zinc-100 px-5 py-3">
+        <div className="flex items-center justify-between border-b border-border px-5 py-3">
           <div>
-            <p className="text-sm font-semibold text-zinc-800">Approval Delegations</p>
-            <p className="text-xs text-zinc-400">Temporarily delegate approval authority to another user.</p>
+            <p className="text-sm font-semibold text-fg">Approval Delegations</p>
+            <p className="text-xs text-fg-subtle">Temporarily delegate approval authority to another user.</p>
           </div>
-          <button onClick={() => setShowCreate(true)} className="flex items-center gap-1.5 h-7 rounded-md bg-blue-600 px-3 text-xs font-medium text-white hover:bg-blue-700">
+          <button onClick={() => setShowCreate(true)} className="flex items-center gap-1.5 h-7 rounded-md bg-accent px-3 text-xs font-medium text-white hover:bg-accent-hover">
             <Plus className="h-3.5 w-3.5" /> New delegation
           </button>
         </div>
-        {isLoading && <p className="px-5 py-8 text-center text-sm text-zinc-400">Loading…</p>}
+        {isLoading && <p className="px-5 py-8 text-center text-sm text-fg-subtle">Loading…</p>}
         <table className="w-full text-sm">
           <thead>
-            <tr className="border-b border-zinc-100 bg-zinc-50">
-              <th className="px-4 py-2.5 text-left text-xs font-medium text-zinc-500">From</th>
-              <th className="px-4 py-2.5 text-left text-xs font-medium text-zinc-500">To</th>
-              <th className="px-4 py-2.5 text-left text-xs font-medium text-zinc-500">Starts</th>
-              <th className="px-4 py-2.5 text-left text-xs font-medium text-zinc-500">Ends</th>
-              <th className="px-4 py-2.5 text-left text-xs font-medium text-zinc-500">Status</th>
-              <th className="px-4 py-2.5 text-left text-xs font-medium text-zinc-500">Reason</th>
+            <tr className="border-b border-border bg-surface-muted">
+              <th className="px-4 py-2.5 text-left text-xs font-medium text-fg-muted">From</th>
+              <th className="px-4 py-2.5 text-left text-xs font-medium text-fg-muted">To</th>
+              <th className="px-4 py-2.5 text-left text-xs font-medium text-fg-muted">Starts</th>
+              <th className="px-4 py-2.5 text-left text-xs font-medium text-fg-muted">Ends</th>
+              <th className="px-4 py-2.5 text-left text-xs font-medium text-fg-muted">Status</th>
+              <th className="px-4 py-2.5 text-left text-xs font-medium text-fg-muted">Reason</th>
               <th className="px-4 py-2.5 w-10" />
             </tr>
           </thead>
-          <tbody className="divide-y divide-zinc-50">
+          <tbody className="divide-y divide-border">
             {!isLoading && !delegations?.length && (
-              <tr><td colSpan={7} className="py-10 text-center text-sm text-zinc-400">No delegations</td></tr>
+              <tr><td colSpan={7} className="py-10 text-center text-sm text-fg-subtle">No delegations</td></tr>
             )}
             {delegations?.map((d) => {
               const active = new Date(d.startsAt) <= now && new Date(d.endsAt) >= now;
               return (
-                <tr key={d.id} className="hover:bg-zinc-50">
-                  <td className="px-4 py-2.5 text-xs font-mono text-zinc-600">{d.fromUserId.slice(0, 8)}…</td>
-                  <td className="px-4 py-2.5 text-xs font-mono text-zinc-600">{d.toUserId.slice(0, 8)}…</td>
-                  <td className="px-4 py-2.5 text-xs text-zinc-500">{formatDate(d.startsAt)}</td>
-                  <td className="px-4 py-2.5 text-xs text-zinc-500">{formatDate(d.endsAt)}</td>
+                <tr key={d.id} className="hover:bg-surface-hover">
+                  <td className="px-4 py-2.5 text-xs font-mono text-fg-muted">{d.fromUserId.slice(0, 8)}…</td>
+                  <td className="px-4 py-2.5 text-xs font-mono text-fg-muted">{d.toUserId.slice(0, 8)}…</td>
+                  <td className="px-4 py-2.5 text-xs text-fg-muted">{formatDate(d.startsAt)}</td>
+                  <td className="px-4 py-2.5 text-xs text-fg-muted">{formatDate(d.endsAt)}</td>
                   <td className="px-4 py-2.5">
-                    <span className={`inline-flex rounded-md px-2 py-0.5 text-xs font-medium ${active ? 'bg-green-50 text-green-700' : 'bg-zinc-100 text-zinc-500'}`}>
+                    <span className={`inline-flex rounded-md px-2 py-0.5 text-xs font-medium ${active ? 'bg-success-bg text-success' : 'bg-surface-muted text-fg-muted'}`}>
                       {active ? 'Active' : 'Inactive'}
                     </span>
                   </td>
-                  <td className="px-4 py-2.5 text-xs text-zinc-500 truncate max-w-[140px]">{d.reason ?? '—'}</td>
+                  <td className="px-4 py-2.5 text-xs text-fg-muted truncate max-w-[140px]">{d.reason ?? '—'}</td>
                   <td className="px-4 py-2.5">
-                    <button onClick={() => deleteDelegation(d.id)} className="rounded p-1 text-zinc-400 hover:bg-red-50 hover:text-red-500">
+                    <button aria-label="Delete delegation" onClick={() => setPendingDeleteDelegId(d.id)} className="rounded p-1 text-fg-subtle hover:bg-danger-bg hover:text-danger">
                       <Trash2 className="h-3.5 w-3.5" />
                     </button>
                   </td>
@@ -553,19 +631,19 @@ export function RbacPage() {
     <div className="flex flex-col gap-5">
       {/* Header */}
       <div>
-        <h1 className="text-lg font-semibold tracking-tight text-zinc-900">Access Control</h1>
-        <p className="mt-0.5 text-sm text-zinc-500">Manage roles, user assignments, and approval delegations.</p>
+        <h1 className="text-lg font-semibold tracking-tight text-fg">Access Control</h1>
+        <p className="mt-0.5 text-sm text-fg-muted">Manage roles, user assignments, and approval delegations.</p>
       </div>
 
       {/* Tabs */}
-      <div className="flex gap-1 rounded-lg bg-zinc-100 p-1 w-fit">
+      <div className="flex gap-1 rounded-lg bg-surface-muted p-1 w-fit">
         {TABS.map(({ value, label, icon: Icon }) => (
           <button
             key={value}
             onClick={() => setTab(value)}
             className={[
               'flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium transition-colors',
-              tab === value ? 'bg-white text-zinc-900 shadow-sm' : 'text-zinc-500 hover:text-zinc-700',
+              tab === value ? 'bg-surface text-fg shadow-sm' : 'text-fg-muted hover:text-fg-muted',
             ].join(' ')}
           >
             <Icon className="h-3.5 w-3.5" strokeWidth={1.75} />

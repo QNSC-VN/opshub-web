@@ -3,7 +3,9 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { ShieldCheck, Plus, CheckCircle, XCircle, X } from 'lucide-react';
 import { toast } from 'sonner';
 import { api } from '@/shared/api/client';
-import type { AccessRequestStatus } from '@/shared/api/types';
+import { SlideOver, SlideOverSection } from '@/shared/ui/slide-over';
+import { ActivityTimeline } from '@/shared/ui/activity-timeline';
+import type { AccessRequestResponse, AccessRequestStatus } from '@/shared/api/types';
 
 const ACCESS_TYPE_OPTIONS = [
   { value: 'local_admin', label: 'Local Admin' },
@@ -24,10 +26,10 @@ const STATUS_LABEL: Record<string, string> = {
 };
 
 const STATUS_CLASS: Record<string, string> = {
-  pending: 'bg-amber-50 text-amber-700',
-  approved: 'bg-green-50 text-green-700',
-  rejected: 'bg-red-50 text-red-700',
-  expired: 'bg-zinc-100 text-zinc-500',
+  pending: 'bg-warning-bg text-warning',
+  approved: 'bg-success-bg text-success',
+  rejected: 'bg-danger-bg text-danger',
+  expired: 'bg-surface-muted text-fg-muted',
 };
 
 const STATUS_FILTERS = [
@@ -38,7 +40,7 @@ const STATUS_FILTERS = [
 ];
 
 const inputClass =
-  'h-8 w-full rounded-md border border-zinc-200 bg-white px-3 text-sm text-zinc-900 placeholder:text-zinc-400 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20';
+  'h-8 w-full rounded-md border border-border bg-surface px-3 text-sm text-fg placeholder:text-fg-subtle focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/20';
 
 // ── Hook ──────────────────────────────────────────────────────────────────────
 
@@ -64,22 +66,34 @@ interface SubmitModalProps {
 
 function SubmitModal({ onClose, onSuccess }: SubmitModalProps) {
   const [loading, setLoading] = useState(false);
-  const [err, setErr] = useState('');
   const [form, setForm] = useState({
     accessType: 'vpn' as AccessType,
     target: '',
     justification: '',
     durationHours: 8,
   });
+  const [fieldErrors, setFieldErrors] = useState<Partial<Record<keyof typeof form, string>>>({});
 
   function set<K extends keyof typeof form>(k: K, v: (typeof form)[K]) {
     setForm((f) => ({ ...f, [k]: v }));
+    if (fieldErrors[k]) setFieldErrors((e) => ({ ...e, [k]: undefined }));
+  }
+
+  function validate(): boolean {
+    const errors: Partial<Record<keyof typeof form, string>> = {};
+    if (!form.target.trim()) errors.target = 'Target system is required.';
+    if (form.target.trim().length > 200) errors.target = 'Target must be under 200 characters.';
+    if (!form.justification.trim()) errors.justification = 'Justification is required.';
+    if (form.justification.trim().length < 10) errors.justification = 'Provide at least 10 characters of justification.';
+    if (form.durationHours < 1 || form.durationHours > 720) errors.durationHours = 'Duration must be between 1 and 720 hours.';
+    setFieldErrors(errors);
+    return Object.keys(errors).length === 0;
   }
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
+    if (!validate()) return;
     setLoading(true);
-    setErr('');
     const { error } = await api.POST('/v1/access-requests', {
       body: {
         accessType: form.accessType,
@@ -89,7 +103,7 @@ function SubmitModal({ onClose, onSuccess }: SubmitModalProps) {
       },
     });
     setLoading(false);
-    if (error) { setErr('Failed to submit request. Please try again.'); return; }
+    if (error) { toast.error('Failed to submit request. Please try again.'); return; }
     toast.success('Access request submitted');
     onSuccess();
     onClose();
@@ -100,18 +114,19 @@ function SubmitModal({ onClose, onSuccess }: SubmitModalProps) {
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/20"
       onClick={(e) => e.target === e.currentTarget && onClose()}
     >
-      <div className="w-full max-w-md rounded-xl bg-white shadow-xl">
-        <div className="flex items-center justify-between border-b border-zinc-100 px-5 py-4">
-          <h2 className="text-sm font-semibold text-zinc-900">Request temporary access</h2>
-          <button onClick={onClose} className="rounded p-1 text-zinc-400 hover:bg-zinc-100 hover:text-zinc-600">
+      <div className="w-full max-w-md rounded-xl bg-surface shadow-xl">
+        <div className="flex items-center justify-between border-b border-border px-5 py-4">
+          <h2 className="text-sm font-semibold text-fg">Request temporary access</h2>
+          <button onClick={onClose} aria-label="Close" className="rounded p-1 text-fg-subtle hover:bg-surface-hover hover:text-fg-muted">
             <X className="h-4 w-4" />
           </button>
         </div>
-        <form onSubmit={onSubmit} className="flex flex-col gap-4 p-5">
+        <form onSubmit={onSubmit} noValidate className="flex flex-col gap-4 p-5">
           <div className="flex flex-col gap-1.5">
-            <label className="text-xs font-medium text-zinc-700">Access type *</label>
+            <label htmlFor="access-type" className="text-xs font-medium text-fg-muted">Access type <span className="text-red-500" aria-hidden="true">*</span></label>
             <select
-              required value={form.accessType}
+              id="access-type"
+              value={form.accessType}
               onChange={(e) => set('accessType', e.target.value as AccessType)}
               className={inputClass}
             >
@@ -121,45 +136,58 @@ function SubmitModal({ onClose, onSuccess }: SubmitModalProps) {
             </select>
           </div>
           <div className="flex flex-col gap-1.5">
-            <label className="text-xs font-medium text-zinc-700">Target system / resource *</label>
+            <label htmlFor="access-target" className="text-xs font-medium text-fg-muted">Target system / resource <span className="text-red-500" aria-hidden="true">*</span></label>
             <input
-              required value={form.target}
+              id="access-target"
+              value={form.target}
               onChange={(e) => set('target', e.target.value)}
               placeholder="e.g. prod-db-01, 10.0.0.5, s3://my-bucket"
-              className={inputClass}
+              aria-invalid={!!fieldErrors.target}
+              aria-describedby={fieldErrors.target ? 'access-target-error' : undefined}
+              className={`${inputClass} ${fieldErrors.target ? 'border-red-400 focus:border-red-400 focus:ring-red-400/20' : ''}`}
             />
+            {fieldErrors.target && <p id="access-target-error" role="alert" className="text-xs text-red-600">{fieldErrors.target}</p>}
           </div>
           <div className="flex flex-col gap-1.5">
-            <label className="text-xs font-medium text-zinc-700">Justification *</label>
+            <label htmlFor="access-justification" className="text-xs font-medium text-fg-muted">Justification <span className="text-red-500" aria-hidden="true">*</span></label>
             <textarea
-              required value={form.justification}
+              id="access-justification"
+              value={form.justification}
               onChange={(e) => set('justification', e.target.value)}
               rows={3}
               placeholder="Why do you need this access and for what purpose?"
-              className="w-full resize-none rounded-md border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 placeholder:text-zinc-400 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+              aria-invalid={!!fieldErrors.justification}
+              aria-describedby={fieldErrors.justification ? 'access-justification-error' : undefined}
+              className={`w-full resize-none rounded-md border bg-surface px-3 py-2 text-sm text-fg placeholder:text-fg-subtle focus:outline-none focus:ring-2 ${fieldErrors.justification ? 'border-red-400 focus:border-red-400 focus:ring-red-400/20' : 'border-border focus:border-accent focus:ring-accent/20'}`}
             />
+            {fieldErrors.justification && <p id="access-justification-error" role="alert" className="text-xs text-red-600">{fieldErrors.justification}</p>}
           </div>
           <div className="flex flex-col gap-1.5">
-            <label className="text-xs font-medium text-zinc-700">Duration (hours)</label>
+            <label htmlFor="access-duration" className="text-xs font-medium text-fg-muted">Duration (hours)</label>
             <input
-              type="number" min={1} max={720} required
+              id="access-duration"
+              type="number" min={1} max={720}
               value={form.durationHours}
               onChange={(e) => set('durationHours', Number(e.target.value))}
-              className={inputClass}
+              aria-invalid={!!fieldErrors.durationHours}
+              aria-describedby={fieldErrors.durationHours ? 'access-duration-error' : 'access-duration-hint'}
+              className={`${inputClass} ${fieldErrors.durationHours ? 'border-red-400 focus:border-red-400 focus:ring-red-400/20' : ''}`}
             />
-            <p className="text-xs text-zinc-400">Maximum 720 hours (30 days). Access is automatically revoked after expiry.</p>
+            {fieldErrors.durationHours
+              ? <p id="access-duration-error" role="alert" className="text-xs text-red-600">{fieldErrors.durationHours}</p>
+              : <p id="access-duration-hint" className="text-xs text-fg-subtle">Maximum 720 hours (30 days). Access is automatically revoked after expiry.</p>
+            }
           </div>
-          {err && <p className="text-xs text-red-500">{err}</p>}
           <div className="flex justify-end gap-2 pt-1">
             <button
               type="button" onClick={onClose}
-              className="h-8 rounded-md border border-zinc-200 px-3.5 text-sm font-medium text-zinc-600 hover:bg-zinc-50"
+              className="h-8 rounded-md border border-border px-3.5 text-sm font-medium text-fg-muted hover:bg-surface-hover"
             >
               Cancel
             </button>
             <button
               type="submit" disabled={loading}
-              className="h-8 rounded-md bg-blue-600 px-3.5 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-60"
+              className="h-8 rounded-md bg-accent px-3.5 text-sm font-medium text-white hover:bg-accent-hover disabled:opacity-60"
             >
               {loading ? 'Submitting…' : 'Submit request'}
             </button>
@@ -176,6 +204,7 @@ export function AccessPage() {
   const qc = useQueryClient();
   const [statusFilter, setStatusFilter] = useState<AccessRequestStatus | ''>('');
   const [showForm, setShowForm] = useState(false);
+  const [selected, setSelected] = useState<AccessRequestResponse | null>(null);
 
   const requests = useAccessRequests(statusFilter);
   const invalidate = () => qc.invalidateQueries({ queryKey: ['access-requests'] });
@@ -210,14 +239,14 @@ export function AccessPage() {
         {/* Header */}
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-lg font-semibold tracking-tight text-zinc-900">Access Requests</h1>
-            <p className="mt-0.5 text-sm text-zinc-500">
+            <h1 className="text-lg font-semibold tracking-tight text-fg">Access Requests</h1>
+            <p className="mt-0.5 text-sm text-fg-muted">
               Request and manage temporary privileged access to systems and resources.
             </p>
           </div>
           <button
             onClick={() => setShowForm(true)}
-            className="flex items-center gap-2 rounded-md bg-blue-600 px-3.5 py-2 text-sm font-medium text-white transition-colors hover:bg-blue-700"
+            className="flex items-center gap-2 rounded-md bg-accent px-3.5 py-2 text-sm font-medium text-white transition-colors hover:bg-accent-hover"
           >
             <Plus className="h-4 w-4" strokeWidth={2} />
             Request access
@@ -225,7 +254,7 @@ export function AccessPage() {
         </div>
 
         {/* Status filter */}
-        <div className="flex gap-1 rounded-lg bg-zinc-100 p-1 w-fit">
+        <div className="flex gap-1 rounded-lg bg-surface-muted p-1 w-fit">
           {STATUS_FILTERS.map(({ value, label }) => (
             <button
               key={value}
@@ -233,8 +262,8 @@ export function AccessPage() {
               className={[
                 'rounded-md px-3 py-1 text-sm font-medium transition-colors',
                 statusFilter === value
-                  ? 'bg-white text-zinc-900 shadow-sm'
-                  : 'text-zinc-500 hover:text-zinc-700',
+                  ? 'bg-surface text-fg shadow-sm'
+                  : 'text-fg-muted hover:text-fg-muted',
               ].join(' ')}
             >
               {label}
@@ -243,27 +272,27 @@ export function AccessPage() {
         </div>
 
         {/* Table */}
-        <div className="overflow-hidden rounded-lg border border-zinc-200 bg-white">
+        <div className="overflow-hidden rounded-lg border border-border bg-surface">
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-zinc-100 bg-zinc-50">
-                <th className="px-4 py-2.5 text-left text-xs font-medium tracking-wide text-zinc-500">Access type</th>
-                <th className="px-4 py-2.5 text-left text-xs font-medium tracking-wide text-zinc-500">Target</th>
-                <th className="px-4 py-2.5 text-left text-xs font-medium tracking-wide text-zinc-500">Duration</th>
-                <th className="px-4 py-2.5 text-left text-xs font-medium tracking-wide text-zinc-500">Status</th>
-                <th className="px-4 py-2.5 text-left text-xs font-medium tracking-wide text-zinc-500">Requested</th>
-                <th className="px-4 py-2.5 text-left text-xs font-medium tracking-wide text-zinc-500">Actions</th>
+              <tr className="border-b border-border bg-surface-muted">
+                <th className="px-4 py-2.5 text-left text-xs font-medium tracking-wide text-fg-muted">Access type</th>
+                <th className="px-4 py-2.5 text-left text-xs font-medium tracking-wide text-fg-muted">Target</th>
+                <th className="px-4 py-2.5 text-left text-xs font-medium tracking-wide text-fg-muted">Duration</th>
+                <th className="px-4 py-2.5 text-left text-xs font-medium tracking-wide text-fg-muted">Status</th>
+                <th className="px-4 py-2.5 text-left text-xs font-medium tracking-wide text-fg-muted">Requested</th>
+                <th className="px-4 py-2.5 text-left text-xs font-medium tracking-wide text-fg-muted">Actions</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-zinc-50">
+            <tbody className="divide-y divide-border">
               {requests.isLoading && (
                 <tr>
-                  <td colSpan={6} className="px-4 py-8 text-center text-sm text-zinc-400">Loading…</td>
+                  <td colSpan={6} className="px-4 py-8 text-center text-sm text-fg-subtle">Loading…</td>
                 </tr>
               )}
               {requests.isError && (
                 <tr>
-                  <td colSpan={6} className="px-4 py-8 text-center text-sm text-red-500">
+                  <td colSpan={6} className="px-4 py-8 text-center text-sm text-danger">
                     Failed to load requests. Is the API running?
                   </td>
                 </tr>
@@ -272,44 +301,48 @@ export function AccessPage() {
                 <tr>
                   <td colSpan={6} className="px-4 py-12 text-center">
                     <div className="flex flex-col items-center gap-2">
-                      <ShieldCheck className="h-8 w-8 text-zinc-200" strokeWidth={1.5} />
-                      <span className="text-sm text-zinc-400">No access requests found</span>
-                      <span className="text-xs text-zinc-300">Submit a request to get started</span>
+                      <ShieldCheck className="h-8 w-8 text-fg-subtle" strokeWidth={1.5} />
+                      <span className="text-sm text-fg-subtle">No access requests found</span>
+                      <span className="text-xs text-fg-subtle">Submit a request to get started</span>
                     </div>
                   </td>
                 </tr>
               )}
               {requests.data?.data?.map((r) => (
-                <tr key={r.id} className="transition-colors hover:bg-zinc-50">
-                  <td className="px-4 py-3 font-mono text-xs font-medium text-zinc-800">{r.accessType}</td>
-                  <td className="px-4 py-3 text-zinc-700">{r.target}</td>
-                  <td className="px-4 py-3 text-zinc-500">{r.durationHours}h</td>
+                <tr
+                  key={r.id}
+                  className="cursor-pointer transition-colors hover:bg-surface-hover"
+                  onClick={() => setSelected(r as AccessRequestResponse)}
+                >
+                  <td className="px-4 py-3 font-mono text-xs font-medium text-fg">{r.accessType}</td>
+                  <td className="px-4 py-3 text-fg-muted">{r.target}</td>
+                  <td className="px-4 py-3 text-fg-muted">{r.durationHours}h</td>
                   <td className="px-4 py-3">
                     <span
                       className={[
                         'inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium',
-                        STATUS_CLASS[r.status] ?? 'bg-zinc-100 text-zinc-500',
+                        STATUS_CLASS[r.status] ?? 'bg-surface-muted text-fg-muted',
                       ].join(' ')}
                     >
                       {STATUS_LABEL[r.status] ?? r.status}
                     </span>
                   </td>
-                  <td className="px-4 py-3 text-xs text-zinc-400">
+                  <td className="px-4 py-3 text-xs text-fg-subtle">
                     {new Date(r.createdAt).toLocaleDateString()}
                   </td>
-                  <td className="px-4 py-3">
+                  <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
                     {r.status === 'pending' && (
                       <div className="flex items-center gap-1">
                         <button
                           onClick={() => handleApprove(r.id)}
-                          className="flex items-center gap-1 rounded px-2 py-1 text-xs font-medium text-green-700 transition-colors hover:bg-green-50"
+                          className="flex items-center gap-1 rounded px-2 py-1 text-xs font-medium text-success transition-colors hover:bg-success-bg"
                         >
                           <CheckCircle className="h-3.5 w-3.5" strokeWidth={2} />
                           Approve
                         </button>
                         <button
                           onClick={() => handleReject(r.id)}
-                          className="flex items-center gap-1 rounded px-2 py-1 text-xs font-medium text-red-600 transition-colors hover:bg-red-50"
+                          className="flex items-center gap-1 rounded px-2 py-1 text-xs font-medium text-danger transition-colors hover:bg-danger-bg"
                         >
                           <XCircle className="h-3.5 w-3.5" strokeWidth={2} />
                           Reject
@@ -317,12 +350,12 @@ export function AccessPage() {
                       </div>
                     )}
                     {r.status === 'approved' && r.reviewedAt && (
-                      <span className="text-xs text-zinc-400">
+                      <span className="text-xs text-fg-subtle">
                         Approved {new Date(r.reviewedAt).toLocaleDateString()}
                       </span>
                     )}
                     {r.status === 'rejected' && r.reviewNote && (
-                      <span className="text-xs text-zinc-400" title={r.reviewNote}>
+                      <span className="text-xs text-fg-subtle" title={r.reviewNote}>
                         Rejected — {r.reviewNote.slice(0, 30)}{r.reviewNote.length > 30 ? '…' : ''}
                       </span>
                     )}
@@ -332,12 +365,77 @@ export function AccessPage() {
             </tbody>
           </table>
           {requests.data?.pageInfo && (
-            <div className="border-t border-zinc-100 bg-zinc-50 px-4 py-2.5 text-xs text-zinc-400">
+            <div className="border-t border-border bg-surface-muted px-4 py-2.5 text-xs text-fg-subtle">
               {requests.data.pageInfo.total} request{requests.data.pageInfo.total !== 1 ? 's' : ''}
             </div>
           )}
         </div>
       </div>
+
+      {/* Access request detail slide-over */}
+      <SlideOver
+        open={!!selected}
+        onClose={() => setSelected(null)}
+        title={selected?.accessType ?? 'Access request'}
+        description={selected ? `${selected.target} · ${selected.durationHours}h` : undefined}
+        width="lg"
+        headerActions={selected?.status === 'pending' ? (
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => { handleApprove(selected.id); setSelected(null); }}
+              className="flex items-center gap-1 rounded-md bg-success-bg px-3 py-1.5 text-xs font-medium text-success hover:bg-success-bg"
+            >
+              <CheckCircle className="h-3 w-3" strokeWidth={2} /> Approve
+            </button>
+            <button
+              onClick={() => { handleReject(selected.id); setSelected(null); }}
+              className="flex items-center gap-1 rounded-md bg-danger-bg px-3 py-1.5 text-xs font-medium text-danger hover:bg-danger-bg"
+            >
+              <XCircle className="h-3 w-3" strokeWidth={2} /> Reject
+            </button>
+          </div>
+        ) : undefined}
+      >
+        {selected && (
+          <>
+            <SlideOverSection title="Details">
+              <dl className="grid grid-cols-2 gap-x-4 gap-y-3 text-sm">
+                {[
+                  { label: 'Access type', value: selected.accessType },
+                  { label: 'Target',      value: selected.target },
+                  { label: 'Duration',    value: `${selected.durationHours}h` },
+                  { label: 'Status',      value: <span className={['inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium', STATUS_CLASS[selected.status] ?? 'bg-surface-muted text-fg-muted'].join(' ')}>{STATUS_LABEL[selected.status] ?? selected.status}</span> },
+                  { label: 'Requested',   value: new Date(selected.createdAt).toLocaleDateString() },
+                  { label: 'Reviewed',    value: selected.reviewedAt ? new Date(selected.reviewedAt).toLocaleDateString() : '—' },
+                ].map(({ label, value }) => (
+                  <div key={label}>
+                    <dt className="text-xs text-fg-subtle">{label}</dt>
+                    <dd className="mt-0.5 text-fg">{value}</dd>
+                  </div>
+                ))}
+              </dl>
+              {selected.justification && (
+                <div className="mt-4 rounded-md bg-surface-muted px-3 py-2.5 text-sm text-fg-muted">
+                  <p className="mb-1 text-xs text-fg-subtle">Justification</p>
+                  {selected.justification}
+                </div>
+              )}
+              {selected.reviewNote && (
+                <div className="mt-3 rounded-md bg-surface-muted px-3 py-2.5 text-sm text-fg-muted">
+                  <p className="mb-1 text-xs text-fg-subtle">Review note</p>
+                  {selected.reviewNote}
+                </div>
+              )}
+            </SlideOverSection>
+
+            <div className="mx-5 h-px bg-surface-muted" />
+
+            <SlideOverSection title="Activity">
+              <ActivityTimeline resourceId={selected.id} resourceType="access-request" />
+            </SlideOverSection>
+          </>
+        )}
+      </SlideOver>
     </>
   );
 }

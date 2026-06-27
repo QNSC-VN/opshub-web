@@ -42,21 +42,18 @@ export function LoginPage() {
 
   return (
     <div className="flex min-h-[100dvh]">
-      {/* Left: brand panel */}
-      <div
-        className="hidden w-[400px] shrink-0 flex-col justify-between p-10 lg:flex"
-        style={{ background: 'var(--bg-sidebar)' }}
-      >
+      {/* Left: brand panel (always dark) */}
+      <div className="hidden w-[400px] shrink-0 flex-col justify-between bg-sidebar p-10 lg:flex">
         <div className="flex items-center gap-3">
           <OpsHubMark size={32} />
-          <span className="text-base font-semibold tracking-tight text-white">OpsHub</span>
+          <span className="text-base font-semibold tracking-tight text-sidebar-fg-active">OpsHub</span>
         </div>
         <div className="flex flex-col gap-6">
           <div>
-            <h1 className="text-2xl font-semibold leading-snug tracking-tight text-white">
+            <h1 className="text-2xl font-semibold leading-snug tracking-tight text-sidebar-fg-active">
               Internal Ops Platform
             </h1>
-            <p className="mt-2 text-sm leading-relaxed text-zinc-400">
+            <p className="mt-2 text-sm leading-relaxed text-sidebar-fg">
               One portal for IT and HR to manage the full lifecycle of employees,
               devices, software, access, and time.
             </p>
@@ -65,45 +62,43 @@ export function LoginPage() {
             {['People', 'Devices', 'Access', 'Compliance', 'Workforce'].map((tag) => (
               <span
                 key={tag}
-                className="rounded-md border border-zinc-700 px-2.5 py-1 text-xs text-zinc-400"
+                className="rounded-md border border-sidebar-border px-2.5 py-1 text-xs text-sidebar-fg"
               >
                 {tag}
               </span>
             ))}
           </div>
         </div>
-        <p className="text-xs text-zinc-600">
+        <p className="text-xs text-sidebar-label">
           Development environment — set VITE_ENTRA_TENANT_ID to enable SSO.
         </p>
       </div>
 
       {/* Right: dev login form */}
-      <div
-        className="flex flex-1 flex-col items-center justify-center px-6 py-12"
-        style={{ background: 'var(--bg-surface)' }}
-      >
+      <div className="flex flex-1 flex-col items-center justify-center bg-surface px-6 py-12">
         <div className="mb-8 flex items-center gap-2.5 lg:hidden">
           <OpsHubMark size={28} />
-          <span className="text-base font-semibold tracking-tight">OpsHub</span>
+          <span className="text-base font-semibold tracking-tight text-fg">OpsHub</span>
         </div>
 
         <div className="w-full max-w-[360px]">
           <div className="mb-7">
-            <h2 className="text-lg font-semibold tracking-tight text-zinc-900">Dev sign in</h2>
-            <p className="mt-1 text-sm text-zinc-500">
+            <h2 className="text-lg font-semibold tracking-tight text-fg">Dev sign in</h2>
+            <p className="mt-1 text-sm text-fg-muted">
               No password required. Uses seeded employees only.
             </p>
           </div>
 
           <form onSubmit={onSubmit} className="flex flex-col gap-4">
             <div className="flex flex-col gap-1.5">
-              <label className="text-xs font-medium text-zinc-700">Email</label>
+              <label htmlFor="login-email" className="text-xs font-medium text-fg-muted">Email</label>
               <input
+                id="login-email"
                 type="email"
                 required
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="h-9 w-full rounded-md border border-zinc-200 bg-white px-3 text-sm text-zinc-900 placeholder:text-zinc-400 transition-colors focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                className="h-9 w-full rounded-md border border-border bg-surface px-3 text-sm text-fg placeholder:text-fg-subtle transition-colors focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/20"
                 placeholder="user@opshub.local"
               />
             </div>
@@ -111,7 +106,7 @@ export function LoginPage() {
             <button
               type="submit"
               disabled={loading}
-              className="mt-1 h-9 w-full rounded-md bg-blue-600 text-sm font-medium text-white transition-colors hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60 focus:outline-none focus:ring-2 focus:ring-blue-500/40 focus:ring-offset-1"
+              className="mt-1 h-9 w-full rounded-md bg-accent text-sm font-medium text-accent-fg transition-colors hover:bg-accent-hover disabled:cursor-not-allowed disabled:opacity-60 focus:outline-none focus:ring-2 focus:ring-accent/40 focus:ring-offset-1 focus:ring-offset-surface"
             >
               {loading ? 'Signing in…' : 'Sign in'}
             </button>

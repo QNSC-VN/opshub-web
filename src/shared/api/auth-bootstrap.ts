@@ -1,4 +1,4 @@
-import { msalInstance, isSsoConfigured } from '@/app/auth/msal';
+import { handleSsoRedirect, isSsoConfigured } from '@/app/auth/msal';
 import { api } from './client';
 import { useAuthStore } from './auth-store';
 
@@ -12,8 +12,25 @@ import { useAuthStore } from './auth-store';
  *
  * After this resolves, `getToken()` is either set or null.
  * The router's `beforeLoad` then decides what to do with an unauthenticated user.
+ *
+ * Idempotent: multiple calls (React StrictMode double-invoke) share the same promise.
  */
-export async function bootstrapAuth(): Promise<void> {
+let _bootstrapPromise: Promise<void> | null = null;
+
+export function bootstrapAuth(): Promise<void> {
+  if (_bootstrapPromise) return _bootstrapPromise;
+  _bootstrapPromise = _run().finally(() => {
+    // Allow re-run after logout (clear by calling resetBootstrap)
+  });
+  return _bootstrapPromise;
+}
+
+/** Call on logout so the next navigation can bootstrap again. */
+export function resetBootstrap(): void {
+  _bootstrapPromise = null;
+}
+
+async function _run(): Promise<void> {
   // 1. Silent restore from refresh cookie (fastest path — works on every reload)
   try {
     const res = await fetch('/v1/auth/refresh', {
@@ -29,14 +46,15 @@ export async function bootstrapAuth(): Promise<void> {
     // API down or no cookie — fall through
   }
 
-  // 2. If SSO is configured, check if we're returning from a Microsoft redirect
+  // 2. If SSO is configured, check if we're returning from a Microsoft redirect.
+  //    handleSsoRedirect() uses navigateToLoginRequestUrl: false, so MSAL stays
+  //    at the redirectUri instead of navigating back to the pre-redirect URL.
   if (!isSsoConfigured) return;
 
-  try {
-    await msalInstance.initialize();
-    const result = await msalInstance.handleRedirectPromise();
-    if (!result?.idToken) return;
+  const result = await handleSsoRedirect();
+  if (!result?.idToken) return;
 
+  try {
     const { data } = await api.POST('/v1/auth/entra-login', {
       body: { idToken: result.idToken },
     });
@@ -44,6 +62,6 @@ export async function bootstrapAuth(): Promise<void> {
       useAuthStore.getState().setToken(data.accessToken);
     }
   } catch {
-    // Redirect handling failed — user will be sent to Microsoft again
+    // Entra login API failed — user unauthenticated, router will redirect to login
   }
 }

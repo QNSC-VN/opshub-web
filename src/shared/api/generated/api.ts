@@ -234,6 +234,58 @@ export interface paths {
         patch: operations["EmployeesController_updateStatus"];
         trace?: never;
     };
+    "/v1/employees/{id}/avatar/presign": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Get a presigned S3 PUT URL to upload an employee avatar */
+        post: operations["EmployeesController_presignAvatar"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/employees/{id}/avatar/confirm": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Confirm avatar upload completed — links the photo to the employee */
+        post: operations["EmployeesController_confirmAvatar"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/employees/{id}/avatar": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get a time-limited download URL for the employee avatar */
+        get: operations["EmployeesController_getAvatarUrl"];
+        put?: never;
+        post?: never;
+        /** Delete the employee avatar */
+        delete: operations["EmployeesController_deleteAvatar"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/auth/entra-login": {
         parameters: {
             query?: never;
@@ -578,6 +630,57 @@ export interface paths {
         put?: never;
         /** Retire an asset */
         post: operations["AssetsController_retire"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/assets/{id}/photo/presign": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Get a presigned S3 PUT URL to upload an asset photo */
+        post: operations["AssetsController_presignPhoto"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/assets/{id}/photo/confirm": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Confirm asset photo upload completed */
+        post: operations["AssetsController_confirmPhoto"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/assets/{id}/photo": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get a time-limited download URL for the asset photo */
+        get: operations["AssetsController_getPhotoUrl"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -982,6 +1085,57 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/workforce/leave-requests/{id}/document/presign": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Get a presigned S3 PUT URL to upload a leave supporting document (e.g. medical certificate) */
+        post: operations["WorkforceController_presignLeaveDocument"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/workforce/leave-requests/{id}/document/confirm": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Confirm leave document upload completed */
+        post: operations["WorkforceController_confirmLeaveDocument"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/workforce/leave-requests/{id}/document": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get a time-limited download URL for the leave supporting document */
+        get: operations["WorkforceController_getLeaveDocumentUrl"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/requests": {
         parameters: {
             query?: never;
@@ -1367,6 +1521,31 @@ export interface components {
             metadata: Record<string, never>;
             occurredAt: string;
         };
+        NotificationResponseDto: {
+            id: string;
+            recipientId: string;
+            actorId?: string | null;
+            type: string;
+            title: string;
+            body?: string | null;
+            resourceType?: string | null;
+            resourceId?: string | null;
+            metadata: {
+                [key: string]: unknown;
+            };
+            isRead: boolean;
+            readAt?: string | null;
+            createdAt: string;
+            sourceEventId?: string | null;
+        };
+        NotificationListResultDto: {
+            items: components["schemas"]["NotificationResponseDto"][];
+            nextCursor?: string | null;
+        };
+        UnreadCountResponseDto: {
+            /** @description Number of unread notifications */
+            count: number;
+        };
         PreferenceResponseDto: {
             type: string;
             inApp: boolean;
@@ -1386,6 +1565,7 @@ export interface components {
             managerId: string | null;
             roles: string[];
             status: string;
+            photoStorageKey: string | null;
             createdAt: string;
         };
         CreateEmployeeDto: {
@@ -1410,6 +1590,16 @@ export interface components {
         UpdateStatusDto: {
             /** @enum {string} */
             status: "active" | "on_leave" | "offboarded";
+        };
+        PresignAvatarDto: {
+            fileName: string;
+            /** @enum {string} */
+            mimeType: "image/jpeg" | "image/png" | "image/webp";
+            sizeBytes: number;
+        };
+        ConfirmAvatarDto: {
+            /** Format: uuid */
+            fileId: string;
         };
         EntraLoginDto: {
             idToken: string;
@@ -1505,6 +1695,7 @@ export interface components {
             warrantyExpiry: string | null;
             specs: Record<string, never>;
             assignedTo: string | null;
+            photoStorageKey: string | null;
             createdAt: string;
         };
         AssetAssignmentResponseDto: {
@@ -1535,6 +1726,16 @@ export interface components {
             /** Format: uuid */
             employeeId: string;
             notes?: string;
+        };
+        PresignAssetPhotoDto: {
+            fileName: string;
+            /** @enum {string} */
+            mimeType: "image/jpeg" | "image/png" | "image/webp";
+            sizeBytes: number;
+        };
+        ConfirmAssetPhotoDto: {
+            /** Format: uuid */
+            fileId: string;
         };
         AccessRequestResponseDto: {
             id: string;
@@ -1692,6 +1893,13 @@ export interface components {
             startDate: string;
             department?: string;
             jobTitle?: string;
+            managerName?: string;
+            /** laptop | desktop | remote_only | byod */
+            equipmentType?: string;
+            /** windows | macos | linux */
+            preferredOs?: string;
+            equipmentNote?: string;
+            accessNeeds?: string[];
         };
         OnboardingResponseDto: {
             /** @description Engine request ID — use this to track approval progress. */
@@ -1705,6 +1913,16 @@ export interface components {
         OffboardingResponseDto: {
             /** @description Engine request ID — use this to track approval progress. */
             requestId: string;
+        };
+        PresignLeaveDocumentDto: {
+            fileName: string;
+            /** @enum {string} */
+            mimeType: "application/pdf" | "image/jpeg" | "image/png";
+            sizeBytes: number;
+        };
+        ConfirmLeaveDocumentDto: {
+            /** Format: uuid */
+            fileId: string;
         };
         RequestApprovalResponseDto: {
             id: string;
@@ -2101,7 +2319,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": Record<string, never>;
+                    "application/json": components["schemas"]["NotificationListResultDto"];
                 };
             };
         };
@@ -2119,7 +2337,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["UnreadCountResponseDto"];
+                };
             };
         };
     };
@@ -2466,6 +2686,195 @@ export interface operations {
             };
             /** @description Unprocessable — business rule violation */
             422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    EmployeesController_presignAvatar: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PresignAvatarDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        fileId: string;
+                        uploadUrl: string;
+                        key: string;
+                    };
+                };
+            };
+            /** @description Unauthorized — missing or invalid authentication */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Forbidden — insufficient permissions */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Unprocessable — business rule violation */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    EmployeesController_confirmAvatar: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ConfirmAvatarDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        avatarUrl: string;
+                    };
+                };
+            };
+            /** @description Unauthorized — missing or invalid authentication */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Forbidden — insufficient permissions */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Unprocessable — business rule violation */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    EmployeesController_getAvatarUrl: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        avatarUrl: string | null;
+                    };
+                };
+            };
+            /** @description Unauthorized — missing or invalid authentication */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    EmployeesController_deleteAvatar: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Unauthorized — missing or invalid authentication */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Forbidden — insufficient permissions */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Not Found */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -3284,7 +3693,7 @@ export interface operations {
             };
         };
         responses: {
-            201: {
+            200: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -3340,7 +3749,7 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            201: {
+            200: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -3389,7 +3798,7 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            201: {
+            200: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -3406,6 +3815,155 @@ export interface operations {
             };
             /** @description Forbidden — insufficient permissions */
             403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    AssetsController_presignPhoto: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PresignAssetPhotoDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        fileId: string;
+                        uploadUrl: string;
+                        key: string;
+                    };
+                };
+            };
+            /** @description Unauthorized — missing or invalid authentication */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Forbidden — insufficient permissions */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Unprocessable — business rule violation */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    AssetsController_confirmPhoto: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ConfirmAssetPhotoDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        photoUrl: string;
+                    };
+                };
+            };
+            /** @description Unauthorized — missing or invalid authentication */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Forbidden — insufficient permissions */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Unprocessable — business rule violation */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    AssetsController_getPhotoUrl: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        photoUrl: string | null;
+                    };
+                };
+            };
+            /** @description Unauthorized — missing or invalid authentication */
+            401: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -3600,7 +4158,7 @@ export interface operations {
             };
         };
         responses: {
-            201: {
+            200: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -3649,11 +4207,15 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            201: {
+            200: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": {
+                        status?: string;
+                    };
+                };
             };
             /** @description Unauthorized — missing or invalid authentication */
             401: {
@@ -3992,7 +4554,7 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            201: {
+            200: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -4045,7 +4607,7 @@ export interface operations {
             };
         };
         responses: {
-            201: {
+            200: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -4757,6 +5319,141 @@ export interface operations {
             };
         };
     };
+    WorkforceController_presignLeaveDocument: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PresignLeaveDocumentDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        fileId: string;
+                        uploadUrl: string;
+                        key: string;
+                    };
+                };
+            };
+            /** @description Unauthorized — missing or invalid authentication */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Unprocessable — business rule violation */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    WorkforceController_confirmLeaveDocument: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ConfirmLeaveDocumentDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        documentUrl: string;
+                    };
+                };
+            };
+            /** @description Unauthorized — missing or invalid authentication */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Unprocessable — business rule violation */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    WorkforceController_getLeaveDocumentUrl: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        documentUrl: string | null;
+                    };
+                };
+            };
+            /** @description Unauthorized — missing or invalid authentication */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
     RequestsController_list: {
         parameters: {
             query?: {
@@ -4773,11 +5470,22 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
+            /** @description Paginated list */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": {
+                        data?: components["schemas"]["RequestItemResponseDto"][];
+                        pageInfo?: {
+                            total: number;
+                            limit: number;
+                            offset: number;
+                            hasNextPage: boolean;
+                        };
+                    };
+                };
             };
         };
     };
@@ -4817,7 +5525,7 @@ export interface operations {
             };
         };
         responses: {
-            201: {
+            200: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -4842,7 +5550,7 @@ export interface operations {
             };
         };
         responses: {
-            201: {
+            200: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -4867,7 +5575,7 @@ export interface operations {
             };
         };
         responses: {
-            201: {
+            200: {
                 headers: {
                     [name: string]: unknown;
                 };

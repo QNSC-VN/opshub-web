@@ -76,9 +76,9 @@ function capitalize(s: string) {
 
 function Card({ title, children, className = '' }: { title: string; children: React.ReactNode; className?: string }) {
   return (
-    <div className={`rounded-xl border border-zinc-200 bg-white ${className}`}>
-      <div className="border-b border-zinc-100 px-5 py-3.5">
-        <h3 className="text-sm font-semibold text-zinc-800">{title}</h3>
+    <div className={`rounded-xl border border-border bg-surface ${className}`}>
+      <div className="border-b border-border px-5 py-3.5">
+        <h3 className="text-sm font-semibold text-fg">{title}</h3>
       </div>
       <div className="p-5">{children}</div>
     </div>
@@ -86,11 +86,11 @@ function Card({ title, children, className = '' }: { title: string; children: Re
 }
 
 function ChartSkeleton() {
-  return <div className="h-48 animate-pulse rounded-lg bg-zinc-50" />;
+  return <div className="h-48 animate-pulse rounded-lg bg-surface-muted" />;
 }
 
 function ErrorMsg() {
-  return <p className="py-4 text-center text-xs text-red-500">Failed to load data</p>;
+  return <p className="py-4 text-center text-xs text-danger">Failed to load data</p>;
 }
 
 // ── Section 1: Throughput area chart ──────────────────────────────────────────
@@ -169,7 +169,7 @@ function SlaChart({ days }: { days: number }) {
     'Rate': r.complianceRatePct ?? 0,
   }));
 
-  if (!chartData.length) return <p className="py-4 text-center text-xs text-zinc-400">No SLA data for this period</p>;
+  if (!chartData.length) return <p className="py-4 text-center text-xs text-fg-subtle">No SLA data for this period</p>;
 
   return (
     <ResponsiveContainer width="100%" height={200}>
@@ -211,7 +211,7 @@ function CycleTimeChart({ days }: { days: number }) {
     'p90 (h)': Math.round(r.p90Hours),
   }));
 
-  if (!chartData.length) return <p className="py-4 text-center text-xs text-zinc-400">No cycle time data for this period</p>;
+  if (!chartData.length) return <p className="py-4 text-center text-xs text-fg-subtle">No cycle time data for this period</p>;
 
   return (
     <ResponsiveContainer width="100%" height={200}>
@@ -242,32 +242,32 @@ function QueueTable() {
     refetchInterval: 60_000,
   });
 
-  if (isLoading) return <div className="h-24 animate-pulse rounded-lg bg-zinc-50" />;
+  if (isLoading) return <div className="h-24 animate-pulse rounded-lg bg-surface-muted" />;
   if (isError || !data) return <ErrorMsg />;
 
   return (
     <table className="w-full text-xs">
       <thead>
-        <tr className="border-b border-zinc-100">
-          <th className="pb-2 text-left font-medium text-zinc-500">Type</th>
-          <th className="pb-2 text-right font-medium text-zinc-500">Pending</th>
-          <th className="pb-2 text-right font-medium text-zinc-500">In Review</th>
-          <th className="pb-2 text-right font-medium text-amber-600">At Risk</th>
-          <th className="pb-2 text-right font-medium text-zinc-700">Total</th>
+        <tr className="border-b border-border">
+          <th className="pb-2 text-left font-medium text-fg-muted">Type</th>
+          <th className="pb-2 text-right font-medium text-fg-muted">Pending</th>
+          <th className="pb-2 text-right font-medium text-fg-muted">In Review</th>
+          <th className="pb-2 text-right font-medium text-warning">At Risk</th>
+          <th className="pb-2 text-right font-medium text-fg-muted">Total</th>
         </tr>
       </thead>
-      <tbody className="divide-y divide-zinc-50">
+      <tbody className="divide-y divide-border">
         {data.rows.map((r) => (
           <tr key={r.type}>
-            <td className="py-2 text-zinc-700">{capitalize(r.type)}</td>
-            <td className="py-2 text-right tabular-nums text-zinc-600">{r.pending}</td>
-            <td className="py-2 text-right tabular-nums text-zinc-600">{r.inReview}</td>
-            <td className={`py-2 text-right tabular-nums font-medium ${r.atRisk > 0 ? 'text-amber-600' : 'text-zinc-400'}`}>{r.atRisk}</td>
-            <td className="py-2 text-right tabular-nums font-semibold text-zinc-800">{r.total}</td>
+            <td className="py-2 text-fg-muted">{capitalize(r.type)}</td>
+            <td className="py-2 text-right tabular-nums text-fg-muted">{r.pending}</td>
+            <td className="py-2 text-right tabular-nums text-fg-muted">{r.inReview}</td>
+            <td className={`py-2 text-right tabular-nums font-medium ${r.atRisk > 0 ? 'text-warning' : 'text-fg-subtle'}`}>{r.atRisk}</td>
+            <td className="py-2 text-right tabular-nums font-semibold text-fg">{r.total}</td>
           </tr>
         ))}
         {data.rows.length === 0 && (
-          <tr><td colSpan={5} className="py-4 text-center text-zinc-400">Queue is empty</td></tr>
+          <tr><td colSpan={5} className="py-4 text-center text-fg-subtle">Queue is empty</td></tr>
         )}
       </tbody>
     </table>
@@ -298,7 +298,7 @@ function AssetUtilizationChart() {
     pct: r.utilizationPct,
   }));
 
-  if (!chartData.length) return <p className="py-4 text-center text-xs text-zinc-400">No asset data</p>;
+  if (!chartData.length) return <p className="py-4 text-center text-xs text-fg-subtle">No asset data</p>;
 
   return (
     <ResponsiveContainer width="100%" height={200}>
@@ -346,7 +346,7 @@ function FindingsChart({ days }: { days: number }) {
   if (!pieData.length) return (
     <div className="flex flex-col items-center justify-center h-48 gap-2">
       <p className="text-3xl">✅</p>
-      <p className="text-sm text-zinc-500 font-medium">No open findings</p>
+      <p className="text-sm text-fg-muted font-medium">No open findings</p>
     </div>
   );
 
@@ -366,11 +366,11 @@ function FindingsChart({ days }: { days: number }) {
         {pieData.map((entry) => (
           <div key={entry.name} className="flex items-center gap-2 text-xs">
             <span className="h-2.5 w-2.5 rounded-full shrink-0" style={{ background: SEVERITY_COLORS[entry.severity] ?? ZINC }} />
-            <span className="text-zinc-600">{entry.name}</span>
-            <span className="ml-auto font-semibold tabular-nums text-zinc-800">{entry.value}</span>
+            <span className="text-fg-muted">{entry.name}</span>
+            <span className="ml-auto font-semibold tabular-nums text-fg">{entry.value}</span>
           </div>
         ))}
-        <p className="mt-1 text-[10px] text-zinc-400">open findings</p>
+        <p className="mt-1 text-[10px] text-fg-subtle">open findings</p>
       </div>
     </div>
   );
@@ -411,25 +411,25 @@ function WorkforceSummary({ days }: { days: number }) {
 
   return (
     <div className="grid grid-cols-2 gap-3">
-      <div className="rounded-lg bg-zinc-50 p-3">
-        <p className="text-xs text-zinc-400">Leave requests</p>
-        <p className="mt-1 text-2xl font-bold tabular-nums text-zinc-900">{totalLeave}</p>
-        <p className="mt-0.5 text-[10px] text-zinc-400">this period</p>
+      <div className="rounded-lg bg-surface-muted p-3">
+        <p className="text-xs text-fg-subtle">Leave requests</p>
+        <p className="mt-1 text-2xl font-bold tabular-nums text-fg">{totalLeave}</p>
+        <p className="mt-0.5 text-[10px] text-fg-subtle">this period</p>
       </div>
-      <div className="rounded-lg bg-zinc-50 p-3">
-        <p className="text-xs text-zinc-400">Overtime hours</p>
-        <p className="mt-1 text-2xl font-bold tabular-nums text-zinc-900">{Math.round(totalOTHours)}</p>
-        <p className="mt-0.5 text-[10px] text-zinc-400">total submitted</p>
+      <div className="rounded-lg bg-surface-muted p-3">
+        <p className="text-xs text-fg-subtle">Overtime hours</p>
+        <p className="mt-1 text-2xl font-bold tabular-nums text-fg">{Math.round(totalOTHours)}</p>
+        <p className="mt-0.5 text-[10px] text-fg-subtle">total submitted</p>
       </div>
-      <div className="rounded-lg bg-zinc-50 p-3">
-        <p className="text-xs text-zinc-400">Approved OT hours</p>
-        <p className="mt-1 text-2xl font-bold tabular-nums text-zinc-900">{Math.round(approvedOT?.totalHours ?? 0)}</p>
-        <p className="mt-0.5 text-[10px] text-zinc-400">avg {Math.round(approvedOT?.avgHours ?? 0)}h / request</p>
+      <div className="rounded-lg bg-surface-muted p-3">
+        <p className="text-xs text-fg-subtle">Approved OT hours</p>
+        <p className="mt-1 text-2xl font-bold tabular-nums text-fg">{Math.round(approvedOT?.totalHours ?? 0)}</p>
+        <p className="mt-0.5 text-[10px] text-fg-subtle">avg {Math.round(approvedOT?.avgHours ?? 0)}h / request</p>
       </div>
-      <div className="rounded-lg bg-zinc-50 p-3">
-        <p className="text-xs text-zinc-400">Approved OT requests</p>
-        <p className="mt-1 text-2xl font-bold tabular-nums text-zinc-900">{approvedOT?.count ?? 0}</p>
-        <p className="mt-0.5 text-[10px] text-zinc-400">approved this period</p>
+      <div className="rounded-lg bg-surface-muted p-3">
+        <p className="text-xs text-fg-subtle">Approved OT requests</p>
+        <p className="mt-1 text-2xl font-bold tabular-nums text-fg">{approvedOT?.count ?? 0}</p>
+        <p className="mt-0.5 text-[10px] text-fg-subtle">approved this period</p>
       </div>
     </div>
   );
@@ -445,13 +445,13 @@ export function ReportsPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-lg font-semibold tracking-tight text-zinc-900">Reports</h1>
-          <p className="mt-0.5 text-sm text-zinc-500">Analytics and KPIs across IT operations, compliance, and workforce.</p>
+          <h1 className="text-lg font-semibold tracking-tight text-fg">Reports</h1>
+          <p className="mt-0.5 text-sm text-fg-muted">Analytics and KPIs across IT operations, compliance, and workforce.</p>
         </div>
         <select
           value={days}
           onChange={(e) => setDays(Number(e.target.value))}
-          className="h-8 rounded-md border border-zinc-200 bg-white px-3 text-sm text-zinc-700 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+          className="h-8 rounded-md border border-border bg-surface px-3 text-sm text-fg-muted focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/20"
         >
           {DAYS_OPTIONS.map((o) => (
             <option key={o.value} value={o.value}>{o.label}</option>

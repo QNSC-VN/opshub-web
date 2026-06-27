@@ -75,21 +75,21 @@ function NotifItem({ notif, onMarkRead }: NotifItemProps) {
   return (
     <div
       className={[
-        'flex gap-3 px-4 py-3 transition-colors hover:bg-zinc-50 cursor-pointer',
+        'flex gap-3 px-4 py-3 transition-colors hover:bg-surface-hover cursor-pointer',
         notif.isRead ? 'opacity-60' : '',
       ].join(' ')}
       onClick={() => !notif.isRead && onMarkRead(notif.id)}
     >
       <span className="mt-0.5 shrink-0 text-base leading-none">{icon}</span>
       <div className="min-w-0 flex-1">
-        <p className="truncate text-sm font-medium text-zinc-900">{notif.title}</p>
+        <p className="truncate text-sm font-medium text-fg">{notif.title}</p>
         {notif.body && (
-          <p className="mt-0.5 text-xs text-zinc-500 line-clamp-2">{notif.body}</p>
+          <p className="mt-0.5 text-xs text-fg-muted line-clamp-2">{notif.body}</p>
         )}
-        <p className="mt-1 text-[10px] text-zinc-400">{relativeTime(notif.createdAt)}</p>
+        <p className="mt-1 text-[10px] text-fg-subtle">{relativeTime(notif.createdAt)}</p>
       </div>
       {!notif.isRead && (
-        <span className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-blue-500" />
+        <span className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-accent-muted0" />
       )}
     </div>
   );
@@ -154,12 +154,12 @@ export function NotificationBell() {
       <button
         ref={buttonRef}
         onClick={() => setOpen((o) => !o)}
-        className="relative flex h-8 w-8 items-center justify-center rounded-md text-zinc-400 transition-colors hover:bg-zinc-800 hover:text-zinc-100"
+        className="relative flex h-8 w-8 items-center justify-center rounded-md text-fg-subtle transition-colors hover:bg-surface-hover hover:text-fg"
         aria-label="Notifications"
       >
         <Bell className="h-4 w-4" strokeWidth={1.75} />
         {unreadCount > 0 && (
-          <span className="absolute right-1 top-1 flex h-4 w-4 items-center justify-center rounded-full bg-blue-500 text-[10px] font-semibold leading-none text-white">
+          <span className="absolute right-1 top-1 flex h-4 w-4 items-center justify-center rounded-full bg-accent-muted0 text-[10px] font-semibold leading-none text-white">
             {unreadCount > 9 ? '9+' : unreadCount}
           </span>
         )}
@@ -168,16 +168,16 @@ export function NotificationBell() {
       {open && (
         <div
           ref={panelRef}
-          className="absolute right-0 top-10 z-50 w-80 overflow-hidden rounded-xl border border-zinc-200 bg-white shadow-xl"
+          className="absolute right-0 top-10 z-50 w-80 overflow-hidden rounded-xl border border-border bg-surface shadow-xl"
         >
           {/* Header */}
-          <div className="flex items-center justify-between border-b border-zinc-100 px-4 py-3">
-            <span className="text-sm font-semibold text-zinc-900">Notifications</span>
+          <div className="flex items-center justify-between border-b border-border px-4 py-3">
+            <span className="text-sm font-semibold text-fg">Notifications</span>
             <div className="flex items-center gap-1">
               {unreadCount > 0 && (
                 <button
                   onClick={markAllRead}
-                  className="flex items-center gap-1 rounded-md px-2 py-1 text-xs text-zinc-500 hover:bg-zinc-100 hover:text-zinc-700"
+                  className="flex items-center gap-1 rounded-md px-2 py-1 text-xs text-fg-muted hover:bg-surface-hover hover:text-fg-muted"
                   title="Mark all as read"
                 >
                   <CheckCheck className="h-3.5 w-3.5" />
@@ -186,7 +186,7 @@ export function NotificationBell() {
               )}
               <button
                 onClick={() => setOpen(false)}
-                className="rounded-md p-1 text-zinc-400 hover:bg-zinc-100"
+                className="rounded-md p-1 text-fg-subtle hover:bg-surface-hover"
               >
                 <X className="h-3.5 w-3.5" />
               </button>
@@ -194,16 +194,16 @@ export function NotificationBell() {
           </div>
 
           {/* List */}
-          <div className="max-h-80 overflow-y-auto divide-y divide-zinc-50">
+          <div className="max-h-80 overflow-y-auto divide-y divide-border">
             {isLoading && (
               <div className="flex items-center justify-center py-8">
-                <span className="text-sm text-zinc-400">Loading…</span>
+                <span className="text-sm text-fg-subtle">Loading…</span>
               </div>
             )}
             {!isLoading && (!data?.items.length) && (
               <div className="flex flex-col items-center justify-center gap-2 py-10 text-center">
-                <Inbox className="h-8 w-8 text-zinc-200" strokeWidth={1.5} />
-                <p className="text-sm text-zinc-400">No notifications yet</p>
+                <Inbox className="h-8 w-8 text-fg-subtle" strokeWidth={1.5} />
+                <p className="text-sm text-fg-subtle">No notifications yet</p>
               </div>
             )}
             {data?.items.map((n) => (
@@ -213,10 +213,10 @@ export function NotificationBell() {
 
           {/* Footer */}
           {(data?.items.length ?? 0) > 0 && (
-            <div className="border-t border-zinc-100 px-4 py-2.5">
+            <div className="border-t border-border px-4 py-2.5">
               <button
                 onClick={markAllRead}
-                className="flex w-full items-center justify-center gap-1.5 rounded-md py-1.5 text-xs text-zinc-500 transition-colors hover:text-zinc-700"
+                className="flex w-full items-center justify-center gap-1.5 rounded-md py-1.5 text-xs text-fg-muted transition-colors hover:text-fg-muted"
               >
                 <Check className="h-3.5 w-3.5" />
                 Mark all as read

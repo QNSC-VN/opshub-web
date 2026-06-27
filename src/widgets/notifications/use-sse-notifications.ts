@@ -30,6 +30,7 @@ interface UseSSENotificationsResult {
 }
 
 const MAX_BACKOFF_MS = 30_000;
+const INITIAL_BACKOFF_MS = 1_000;
 
 /**
  * Parse SSE chunks into events.  A single fetch chunk may contain multiple
@@ -57,7 +58,7 @@ export function useSSENotifications(): UseSSENotificationsResult {
   const [unreadCount, setUnreadCount] = useState(0);
   const abortRef = useRef<AbortController | null>(null);
   const retryRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const backoffRef = useRef(1000);
+  const backoffRef = useRef(INITIAL_BACKOFF_MS);
   const mountedRef = useRef(true);
 
   useEffect(() => {
@@ -79,7 +80,7 @@ export function useSSENotifications(): UseSSENotificationsResult {
         if (!res.ok || !res.body) throw new Error(`SSE ${res.status}`);
 
         // Reset backoff on successful connection
-        backoffRef.current = 1000;
+        backoffRef.current = INITIAL_BACKOFF_MS;
 
         const reader = res.body.getReader();
         const decoder = new TextDecoder();

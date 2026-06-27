@@ -10,25 +10,25 @@ export function PlaceholderPage({ title, description }: PlaceholderPageProps) {
   return (
     <div className="flex flex-col gap-5">
       <div>
-        <h1 className="text-lg font-semibold tracking-tight text-zinc-900">{title}</h1>
-        <p className="mt-0.5 text-sm text-zinc-500">{description}</p>
+        <h1 className="text-lg font-semibold tracking-tight text-fg">{title}</h1>
+        <p className="mt-0.5 text-sm text-fg-muted">{description}</p>
       </div>
 
-      <div className="flex flex-col items-center justify-center rounded-lg border border-zinc-200 border-dashed bg-white px-6 py-16 text-center">
-        <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-zinc-100">
-          <Construction className="h-5 w-5 text-zinc-400" strokeWidth={1.75} />
+      <div className="flex flex-col items-center justify-center rounded-lg border border-border border-dashed bg-surface px-6 py-16 text-center">
+        <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-surface-muted">
+          <Construction className="h-5 w-5 text-fg-subtle" strokeWidth={1.75} />
         </div>
-        <h2 className="text-sm font-medium text-zinc-700">Coming soon</h2>
-        <p className="mt-1.5 max-w-sm text-sm text-zinc-400">
+        <h2 className="text-sm font-medium text-fg-muted">Coming soon</h2>
+        <p className="mt-1.5 max-w-sm text-sm text-fg-subtle">
           This module is scaffolded and ready for implementation. Connect it to the API using{" "}
-          <code className="rounded bg-zinc-100 px-1.5 py-0.5 text-xs font-mono text-zinc-600">
+          <code className="rounded bg-surface-muted px-1.5 py-0.5 text-xs font-mono text-fg-muted">
             shared/api/client
           </code>
           .
         </p>
         <Link
           to="/"
-          className="mt-6 flex items-center gap-1.5 text-xs font-medium text-blue-600 hover:text-blue-700"
+          className="mt-6 flex items-center gap-1.5 text-xs font-medium text-accent hover:text-accent"
         >
           Back to overview
           <ArrowRight className="h-3.5 w-3.5" strokeWidth={1.75} />

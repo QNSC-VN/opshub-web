@@ -1,8 +1,10 @@
+import { useEffect, useState, type ComponentType } from 'react';
 import { Link, Outlet, useNavigate } from '@tanstack/react-router';
 import {
   LayoutDashboard,
   Laptop,
   ShieldCheck,
+  ShieldHalf,
   ScanLine,
   CalendarClock,
   Users,
@@ -15,32 +17,36 @@ import {
   UserCog,
   BellRing,
   UserCircle2,
+  Search,
+  DollarSign,
+  Package,
+  Sparkles,
 } from 'lucide-react';
+import { AiChatPanel } from '@/widgets/ai-chat/ai-chat-panel';
 import { useAuthStore } from '@/shared/api/auth-store';
 import { isSsoConfigured, msalInstance } from '@/app/auth/msal';
 import { cn } from '@/shared/lib/utils';
 import { NotificationBell } from '@/widgets/notifications/notification-bell';
-import { useQuery } from '@tanstack/react-query';
-import { api } from '@/shared/api/client';
-import type { components } from '@/shared/api/generated/api';
+import { CommandPalette } from '@/widgets/command-palette/command-palette';
+import { useCommandPaletteStore } from '@/widgets/command-palette/use-command-palette';
+import { useCurrentUser } from '@/shared/hooks/use-current-user';
+import { usePermissions } from '@/shared/hooks/use-permissions';
+import { ThemeToggle } from '@/shared/ui/theme-toggle';
+import { FEATURES } from '@/shared/config/features';
 
-type MeDto = components['schemas']['MeResponseDto'];
-
-function useMe() {
-  return useQuery<MeDto>({
-    queryKey: ['auth', 'me'],
-    queryFn: async () => {
-      const { data, error } = await api.GET('/v1/auth/me');
-      if (error || !data) throw new Error();
-      return data as MeDto;
-    },
-    staleTime: 5 * 60 * 1000,
-  });
+interface NavItem {
+  to: string;
+  label: string;
+  icon: ComponentType<{ className?: string; strokeWidth?: number }>;
+  /** Capability required to see this item. Omit = always visible. */
+  cap?: string;
+  /** Show an "Upgrade" badge when the feature is not available on current plan. */
+  upgradeBadge?: boolean;
 }
 
 interface NavGroup {
   label?: string;
-  items: Array<{ to: string; label: string; icon: React.ComponentType<{ className?: string; strokeWidth?: number }> }>;
+  items: NavItem[];
 }
 
 const navGroups: NavGroup[] = [
@@ -49,15 +55,29 @@ const navGroups: NavGroup[] = [
   },
   {
     label: 'Directory',
-    items: [{ to: '/people', label: 'People', icon: Users }],
+    items: [{ to: '/people', label: 'People', icon: Users, cap: 'people.view' }],
   },
   {
     label: 'IT Operations',
     items: [
-      { to: '/assets', label: 'Assets', icon: Laptop },
-      { to: '/access', label: 'Access Requests', icon: ShieldCheck },
-      { to: '/compliance', label: 'Compliance', icon: ScanLine },
-      { to: '/requests', label: 'Inbox', icon: Inbox },
+      { to: '/assets',           label: 'Assets',          icon: Laptop,      cap: 'assets.view'     },
+      { to: '/access',           label: 'Access Requests',  icon: ShieldCheck, cap: 'access.view'     },
+      { to: '/compliance',       label: 'Compliance',       icon: ScanLine,    cap: 'compliance.view' },
+      { to: '/requests',         label: 'Inbox',            icon: Inbox,       cap: 'requests.view'   },
+      { to: '/finops',           label: 'FinOps',           icon: DollarSign,  cap: 'compliance.view' },
+      {
+        to: '/security-posture',
+        label: 'Security Posture',
+        icon: ShieldHalf,
+        cap: 'security.view',
+        upgradeBadge: !FEATURES.SECURITY_POSTURE,
+      },
+    ],
+  },
+  {
+    label: 'Self-Service',
+    items: [
+      { to: '/catalog', label: 'IT Catalog', icon: Package },
     ],
   },
   {
@@ -66,14 +86,14 @@ const navGroups: NavGroup[] = [
   },
   {
     label: 'Analytics',
-    items: [{ to: '/reports', label: 'Reports', icon: BarChart2 }],
+    items: [{ to: '/reports', label: 'Reports', icon: BarChart2, cap: 'reports.view' }],
   },
   {
     label: 'Settings',
     items: [
-      { to: '/settings/webhooks', label: 'Webhooks', icon: Webhook },
-      { to: '/settings/access-control', label: 'Access Control', icon: UserCog },
-      { to: '/settings/audit-logs', label: 'Audit Logs', icon: ShieldAlert },
+      { to: '/settings/webhooks',               label: 'Webhooks',       icon: Webhook,  cap: 'webhooks.manage' },
+      { to: '/settings/access-control',         label: 'Access Control', icon: UserCog,  cap: 'rbac.manage'     },
+      { to: '/settings/audit-logs',             label: 'Audit Logs',     icon: ShieldAlert, cap: 'audit.view'   },
       { to: '/settings/notification-preferences', label: 'Notifications', icon: BellRing },
     ],
   },
@@ -109,15 +129,15 @@ function AvatarChip({ name, email }: { name: string; email: string }) {
 
 /** Sidebar bottom — link to My Profile, shows current user name. */
 function UserFooter() {
-  const { data: me } = useMe();
+  const { data: me } = useCurrentUser();
   return (
     <Link
       to="/profile"
       className={cn(
         'group flex items-center gap-2.5 rounded-md px-2 py-1.5 text-sm transition-colors',
-        'text-zinc-400 hover:bg-zinc-800 hover:text-zinc-100',
+        'text-sidebar-fg hover:bg-sidebar-hover hover:text-sidebar-fg-active',
       )}
-      activeProps={{ className: 'group flex items-center gap-2.5 rounded-md px-2 py-1.5 text-sm bg-zinc-800 text-white' }}
+      activeProps={{ className: 'group flex items-center gap-2.5 rounded-md px-2 py-1.5 text-sm bg-sidebar-active text-sidebar-fg-active' }}
     >
       {me ? (
         <AvatarChip name={me.name} email={me.email} />
@@ -132,7 +152,22 @@ function UserFooter() {
 export function AppShell() {
   const navigate = useNavigate();
   const clear = useAuthStore((s) => s.clear);
-  const { data: me } = useMe();
+  const { data: me } = useCurrentUser();
+  const { can } = usePermissions();
+  const showPalette = useCommandPaletteStore((s) => s.show);
+  const [aiOpen, setAiOpen] = useState(false);
+
+  // ── Global ⌘K / Ctrl+K listener ────────────────────────────────────────────
+  useEffect(() => {
+    function onKeyDown(e: KeyboardEvent) {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+        e.preventDefault();
+        showPalette();
+      }
+    }
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [showPalette]);
 
   async function handleLogout() {
     try {
@@ -153,63 +188,70 @@ export function AppShell() {
   return (
     <div className="flex h-full">
       {/* Sidebar */}
-      <aside
-        className="flex w-56 shrink-0 flex-col"
-        style={{ background: 'var(--bg-sidebar)' }}
-      >
+      <aside className="flex w-56 shrink-0 flex-col border-r border-sidebar-border bg-sidebar">
         {/* Logo */}
         <div className="flex h-14 items-center gap-2.5 px-4 shrink-0">
           <OpsHubMark />
-          <span className="text-sm font-semibold tracking-tight text-white">OpsHub</span>
+          <span className="text-sm font-semibold tracking-tight text-sidebar-fg-active">OpsHub</span>
         </div>
 
         {/* Divider */}
-        <div className="mx-4 h-px bg-zinc-800" />
+        <div className="mx-4 h-px bg-sidebar-border" />
 
         {/* Nav */}
         <nav className="flex flex-1 flex-col gap-5 overflow-y-auto px-2 py-3">
-          {navGroups.map((group, gi) => (
-            <div key={gi} className="flex flex-col gap-0.5">
-              {group.label && (
-                <span className="px-2 pb-1 text-[10px] font-medium uppercase tracking-widest text-zinc-600">
-                  {group.label}
-                </span>
-              )}
-              {group.items.map(({ to, label, icon: Icon }) => (
-                <Link
-                  key={to}
-                  to={to}
-                  activeOptions={{ exact: to === '/' }}
-                  className={cn(
-                    'group flex items-center gap-2.5 rounded-md px-2 py-1.5 text-sm transition-colors',
-                    'text-zinc-400 hover:bg-zinc-800 hover:text-zinc-100',
-                  )}
-                  activeProps={{
-                    className:
-                      'group flex items-center gap-2.5 rounded-md px-2 py-1.5 text-sm bg-zinc-800 text-white',
-                  }}
-                >
-                  <Icon className="h-4 w-4 shrink-0" strokeWidth={1.75} />
-                  <span className="flex-1">{label}</span>
-                  <ChevronRight
-                    className="h-3 w-3 shrink-0 opacity-0 transition-opacity group-hover:opacity-40"
-                    strokeWidth={2}
-                  />
-                </Link>
-              ))}
-            </div>
-          ))}
+          {navGroups.map((group, gi) => {
+            const visibleItems = group.items.filter(({ cap }) => !cap || can(cap));
+            if (visibleItems.length === 0) return null;
+            return (
+              <div key={gi} className="flex flex-col gap-0.5">
+                {group.label && (
+                  <span className="px-2 pb-1 text-[10px] font-medium uppercase tracking-widest text-sidebar-label">
+                    {group.label}
+                  </span>
+                )}
+                {visibleItems.map(({ to, label, icon: Icon, upgradeBadge }) => (
+                  <Link
+                    key={to}
+                    to={to}
+                    activeOptions={{ exact: to === '/' }}
+                    className={cn(
+                      'group flex items-center gap-2.5 rounded-md px-2 py-1.5 text-sm transition-colors',
+                      'text-sidebar-fg hover:bg-sidebar-hover hover:text-sidebar-fg-active',
+                    )}
+                    activeProps={{
+                      className:
+                        'group flex items-center gap-2.5 rounded-md px-2 py-1.5 text-sm bg-sidebar-active text-sidebar-fg-active',
+                    }}
+                  >
+                    <Icon className="h-4 w-4 shrink-0" strokeWidth={1.75} />
+                    <span className="flex-1">{label}</span>
+                    {upgradeBadge ? (
+                      <span className="rounded px-1 py-0.5 text-[9px] font-semibold uppercase tracking-wide bg-surface-muted text-fg-muted">
+                        Upgrade
+                      </span>
+                    ) : (
+                      <ChevronRight
+                        className="h-3 w-3 shrink-0 opacity-0 transition-opacity group-hover:opacity-40"
+                        strokeWidth={2}
+                      />
+                    )}
+                  </Link>
+                ))}
+              </div>
+            );
+          })}
         </nav>
 
         {/* Bottom: user footer */}
-        <div className="mx-4 h-px bg-zinc-800" />
+        <div className="mx-4 h-px bg-sidebar-border" />
         <div className="p-2 flex flex-col gap-0.5">
           {/* Profile link */}
           <UserFooter />
           {/* Sign out */}
           <button
             onClick={handleLogout}
-            className="flex w-full items-center gap-2.5 rounded-md px-2 py-1.5 text-sm text-zinc-500 transition-colors hover:bg-zinc-800 hover:text-zinc-200"
+            className="flex w-full items-center gap-2.5 rounded-md px-2 py-1.5 text-sm text-sidebar-fg transition-colors hover:bg-sidebar-hover hover:text-sidebar-fg-active"
           >
             <LogOut className="h-4 w-4 shrink-0" strokeWidth={1.75} />
             Sign out
@@ -218,30 +260,58 @@ export function AppShell() {
       </aside>
 
       {/* Main content */}
-      <main
-        className="flex min-w-0 flex-1 flex-col overflow-auto"
-        style={{ background: 'var(--bg-page)' }}
-      >
+      <main className="flex min-w-0 flex-1 flex-col overflow-auto bg-page">
         {/* Top bar */}
-        <div className="flex h-12 shrink-0 items-center justify-between border-b border-zinc-100 bg-white px-6">
-          <div />{/* spacer — breadcrumb can go here later */}
-          <div className="flex items-center gap-3">
+        <div className="sticky top-0 z-20 flex h-12 shrink-0 items-center justify-between border-b border-border bg-surface/85 px-6 backdrop-blur supports-[backdrop-filter]:bg-surface/70">
+          {/* ⌘K search trigger */}
+          <button
+            type="button"
+            onClick={() => showPalette()}
+            className="flex h-8 items-center gap-2 rounded-md border border-border bg-surface-muted px-3 text-sm text-fg-subtle transition-colors hover:border-border-strong hover:text-fg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/30"
+          >
+            <Search className="h-3.5 w-3.5" strokeWidth={1.75} />
+            <span className="hidden sm:inline">Search…</span>
+            <kbd className="hidden rounded border border-border bg-surface px-1.5 py-0.5 text-[10px] text-fg-subtle sm:inline">
+              ⌘K
+            </kbd>
+          </button>
+
+          <div className="flex items-center gap-2">
+            <ThemeToggle />
             <NotificationBell />
+            {FEATURES.AI_ASSISTANT && (
+              <button
+                type="button"
+                onClick={() => setAiOpen(true)}
+                title="AI Assistant"
+                className="flex h-8 w-8 items-center justify-center rounded-md text-fg-muted transition-colors hover:bg-surface-hover hover:text-fg"
+              >
+                <Sparkles className="h-4 w-4" strokeWidth={1.75} />
+              </button>
+            )}
             {/* divider */}
-            <div className="h-5 w-px bg-zinc-200" />
+            <div className="h-5 w-px bg-border" />
             <Link
               to="/profile"
-              className="flex items-center gap-2 rounded-lg px-2 py-1 text-sm text-zinc-600 hover:bg-zinc-50"
+              className="flex items-center gap-2 rounded-lg px-2 py-1 text-sm text-fg-muted hover:bg-surface-hover"
             >
-              <UserCircle2 className="h-4 w-4 text-zinc-400" strokeWidth={1.75} />
-              <span className="text-xs font-medium text-zinc-700 hidden sm:block">{me?.name ?? ''}</span>
+              <UserCircle2 className="h-4 w-4 text-fg-subtle" strokeWidth={1.75} />
+              <span className="text-xs font-medium text-fg-muted hidden sm:block">{me?.name ?? ''}</span>
             </Link>
           </div>
         </div>
-        <div className="mx-auto w-full max-w-5xl px-8 py-7">
+        <div className="mx-auto w-full max-w-[1600px] px-6 py-7 md:px-8">
           <Outlet />
         </div>
       </main>
+
+      {/* Command palette — rendered outside main so it overlays everything */}
+      <CommandPalette />
+
+      {/* AI Assistant panel */}
+      {FEATURES.AI_ASSISTANT && (
+        <AiChatPanel open={aiOpen} onClose={() => setAiOpen(false)} />
+      )}
     </div>
   );
 }

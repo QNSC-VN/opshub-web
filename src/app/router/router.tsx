@@ -22,6 +22,9 @@ import { RbacPage } from '@/pages/settings/rbac-page';
 import { AuditLogsPage } from '@/pages/settings/audit-logs-page';
 import { NotificationPreferencesPage } from '@/pages/notifications/notification-preferences-page';
 import { ProfilePage } from '@/pages/profile/profile-page';
+import { FinOpsPage } from '@/pages/finops/finops-page';
+import { CatalogPage } from '@/pages/catalog/catalog-page';
+import { SecurityPosturePage } from '@/pages/security-posture/security-posture-page';
 
 const rootRoute = createRootRoute({ component: () => <Outlet /> });
 
@@ -134,6 +137,24 @@ const profileRoute = createRoute({
   component: ProfilePage,
 });
 
+const finopsRoute = createRoute({
+  getParentRoute: () => shellRoute,
+  path: '/finops',
+  component: FinOpsPage,
+});
+
+const catalogRoute = createRoute({
+  getParentRoute: () => shellRoute,
+  path: '/catalog',
+  component: CatalogPage,
+});
+
+const securityPostureRoute = createRoute({
+  getParentRoute: () => shellRoute,
+  path: '/security-posture',
+  component: SecurityPosturePage,
+});
+
 const routeTree = rootRoute.addChildren([
   loginRoute,
   shellRoute.addChildren([
@@ -150,6 +171,9 @@ const routeTree = rootRoute.addChildren([
     auditLogsRoute,
     notificationPreferencesRoute,
     profileRoute,
+    finopsRoute,
+    catalogRoute,
+    securityPostureRoute,
   ]),
 ]);
 

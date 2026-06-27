@@ -3,15 +3,16 @@ import type { ButtonHTMLAttributes } from "react";
 import { cn } from "@/shared/lib/utils";
 
 const buttonVariants = cva(
-  "inline-flex items-center justify-center gap-2 rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/40 focus-visible:ring-offset-1 disabled:pointer-events-none disabled:opacity-50",
+  "inline-flex items-center justify-center gap-2 rounded-md text-sm font-medium transition-[color,background-color,opacity] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40 focus-visible:ring-offset-1 focus-visible:ring-offset-surface active:translate-y-px disabled:pointer-events-none disabled:opacity-50",
   {
     variants: {
       variant: {
-        default:  "bg-zinc-900 text-zinc-50 hover:bg-zinc-800",
-        primary:  "bg-blue-600 text-white hover:bg-blue-700",
-        outline:  "border border-zinc-200 bg-white text-zinc-700 hover:bg-zinc-50",
-        ghost:    "text-zinc-600 hover:bg-zinc-100 hover:text-zinc-900",
-        danger:   "bg-red-600 text-white hover:bg-red-700",
+        // theme-inverting solid: dark button in light mode, light button in dark mode
+        default:  "bg-fg text-surface hover:opacity-90",
+        primary:  "bg-accent text-accent-fg hover:bg-accent-hover",
+        outline:  "border border-border bg-surface text-fg-muted hover:bg-surface-hover hover:text-fg",
+        ghost:    "text-fg-muted hover:bg-surface-hover hover:text-fg",
+        danger:   "bg-red-600 text-white hover:bg-red-700 dark:hover:bg-red-500",
       },
       size: {
         default: "h-9 px-4",

@@ -4,6 +4,7 @@ import { RouterProvider } from '@tanstack/react-router';
 import { Toaster } from 'sonner';
 import { router } from '@/app/router/router';
 import { bootstrapAuth } from '@/shared/api/auth-bootstrap';
+import { useThemeStore } from '@/shared/lib/theme';
 
 const queryClient = new QueryClient({
   defaultOptions: { queries: { retry: 1, refetchOnWindowFocus: false } },
@@ -16,6 +17,7 @@ const queryClient = new QueryClient({
  */
 export function AppProviders() {
   const [ready, setReady] = useState(false);
+  const resolvedTheme = useThemeStore((s) => s.resolved);
 
   useEffect(() => {
     bootstrapAuth().finally(() => setReady(true));
@@ -30,7 +32,7 @@ export function AppProviders() {
           height: '100dvh',
           alignItems: 'center',
           justifyContent: 'center',
-          background: '#09090b',
+          background: 'var(--bg-page)',
         }}
       >
         <svg
@@ -53,7 +55,7 @@ export function AppProviders() {
   return (
     <QueryClientProvider client={queryClient}>
       <RouterProvider router={router} />
-      <Toaster richColors position="top-right" />
+      <Toaster richColors position="top-right" theme={resolvedTheme} />
     </QueryClientProvider>
   );
 }
