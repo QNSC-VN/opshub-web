@@ -19,6 +19,23 @@ env:
   PNPM_VERSION: '10.33.2'
 
 jobs:
+  dependency-review:
+    name: Dependency review
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      pull-requests: read
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Review dependency changes
+        uses: actions/dependency-review-action@v4
+        with:
+          fail-on-severity: critical
+
   trivy:
     name: Dependency security scan (Trivy)
     runs-on: ubuntu-latest

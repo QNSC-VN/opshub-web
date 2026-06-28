@@ -11,6 +11,9 @@
     "lint:fix": "eslint . --fix",
     "format": "prettier --write .",
     "typecheck": "tsc --noEmit -p tsconfig.app.json",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:cov": "vitest run --coverage",
     "codegen": "openapi-typescript http://localhost:3001/api/docs-json -o src/shared/api/generated/api.ts",
     "prepare": "husky"
   },
@@ -47,20 +50,26 @@
     "@eslint/js": "^10.0.1",
     "@tailwindcss/vite": "^4.3.1",
     "@types/node": "^24.12.3",
+    "@testing-library/jest-dom": "^6.9.1",
+    "@testing-library/react": "^16.3.2",
+    "@testing-library/user-event": "^14.6.1",
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",
     "@vitejs/plugin-react": "^6.0.1",
+    "@vitest/coverage-v8": "^4.1.9",
     "eslint": "^10.3.0",
     "eslint-plugin-react-hooks": "^7.1.1",
     "eslint-plugin-react-refresh": "^0.5.2",
     "globals": "^17.6.0",
     "husky": "^9.1.7",
+    "jsdom": "^28.0.0",
     "lint-staged": "^17.0.7",
     "openapi-typescript": "^7.13.0",
     "prettier": "^3.8.4",
     "tailwindcss": "^4.3.1",
     "typescript": "~6.0.2",
     "typescript-eslint": "^8.59.2",
-    "vite": "^8.0.12"
+    "vite": "^8.0.12",
+    "vitest": "^4.1.9"
   }
 }

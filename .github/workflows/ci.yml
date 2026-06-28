@@ -40,10 +40,50 @@ jobs:
       - name: Typecheck
         run: pnpm typecheck
 
+  test:
+    name: Unit tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    outputs:
+      has_tests: ${{ steps.detect.outputs.has_tests }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: QNSC-VN/qnsc-gitops/actions/setup-node-pnpm@v1.0.0
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          pnpm-version: ${{ env.PNPM_VERSION }}
+
+      - name: Detect unit tests
+        id: detect
+        shell: bash
+        run: |
+          if find src -type f \( -name '*.test.ts' -o -name '*.test.tsx' -o -name '*.spec.ts' -o -name '*.spec.tsx' \) | grep -q .; then
+            echo "has_tests=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "has_tests=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Unit tests (with coverage)
+        if: steps.detect.outputs.has_tests == 'true'
+        run: pnpm test:cov
+
+      - name: Skip empty test suite
+        if: steps.detect.outputs.has_tests != 'true'
+        run: echo "No unit test files found. Skipping Vitest coverage job."
+
+      - name: Upload coverage
+        if: always() && steps.detect.outputs.has_tests == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage
+          path: coverage/
+          retention-days: 7
+
   build:
     name: Build
     runs-on: ubuntu-latest
-    needs: [quality]
+    needs: [quality, test]
     steps:
       - uses: actions/checkout@v4
 
