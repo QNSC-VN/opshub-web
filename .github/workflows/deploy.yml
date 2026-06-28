@@ -44,7 +44,7 @@ permissions:
 env:
   NODE_VERSION: '22'
   PNPM_VERSION: '10.33.2'
-  GITOPS_SHA: v1.0.0   # pin qnsc-gitops
+  GITOPS_SHA: v1.0.1   # pin qnsc-gitops
 
 jobs:
   # ─────────────────────────────────────────────────────────────────────────
