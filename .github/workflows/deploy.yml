@@ -90,10 +90,10 @@ jobs:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683   # v4.2.2
 
       - name: Scan for secrets
-        uses: QNSC-VN/qnsc-gitops/actions/scan-secrets@v1.0.1
+        uses: QNSC-VN/qnsc-gitops/actions/scan-secrets@v1
 
       - name: Install dependencies
-        uses: QNSC-VN/qnsc-gitops/actions/setup-node-pnpm@v1.0.1
+        uses: QNSC-VN/qnsc-gitops/actions/setup-node-pnpm@v1
         with:
           node-version: ${{ env.NODE_VERSION }}
           pnpm-version: ${{ env.PNPM_VERSION }}
@@ -110,7 +110,7 @@ jobs:
 
       # ── Configure AWS (OIDC) ──────────────────────────────────────────────
       - name: Setup AWS OIDC
-        uses: QNSC-VN/qnsc-gitops/actions/setup-aws-oidc@v1.0.1
+        uses: QNSC-VN/qnsc-gitops/actions/setup-aws-oidc@v1
         with:
           role-arn: arn:aws:iam::${{ secrets.AWS_ACCOUNT_ID }}:role/opshub-github-web-deploy-${{ env.ENVIRONMENT }}
           region: ${{ vars.AWS_REGION }}
@@ -133,7 +133,7 @@ jobs:
 
       # ── Invalidate CloudFront cache ───────────────────────────────────────
       - name: Invalidate CloudFront cache
-        uses: QNSC-VN/qnsc-gitops/actions/cloudfront-invalidate@v1.0.1
+        uses: QNSC-VN/qnsc-gitops/actions/cloudfront-invalidate@v1
         with:
           distribution-id: ${{ vars.CLOUDFRONT_ID }}
           region: ${{ vars.AWS_REGION }}
@@ -142,7 +142,7 @@ jobs:
       # ── Health check — confirm the new version is serving ─────────────────
       - name: Post-deploy health check
         if: vars.APP_URL != ''
-        uses: QNSC-VN/qnsc-gitops/actions/post-deploy-health-check@v1.0.1
+        uses: QNSC-VN/qnsc-gitops/actions/post-deploy-health-check@v1
         with:
           url:             ${{ vars.APP_URL }}
           expected-status: '200'
@@ -164,7 +164,7 @@ jobs:
       # ── Notify Slack / Discord (always — even on failure) ─────────────────
       - name: Notify deploy result
         if: always()
-        uses: QNSC-VN/qnsc-gitops/actions/notify-deploy@v1.0.1
+        uses: QNSC-VN/qnsc-gitops/actions/notify-deploy@v1
         with:
           webhook-url: ${{ secrets.SLACK_DEPLOY_WEBHOOK }}
           status:      ${{ job.status == 'success' && 'success' || 'failure' }}
